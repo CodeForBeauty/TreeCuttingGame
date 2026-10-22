@@ -8,6 +8,8 @@ public class Tree : MonoBehaviour, IInteractable {
     [Min(0.1f)]
     [SerializeField] private float _proximityForScore = 0.3f;
 
+    [SerializeField] private ParticleSystem _impactParticles;
+
     [SerializeField] private SerializableDictionary<Vector3Int, int> _hits = new();
     [SerializeField] private SerializableDictionary<int, int> _hitLevels = new();
 
@@ -28,6 +30,8 @@ public class Tree : MonoBehaviour, IInteractable {
             _hits.Add(point, 1);
             _hitLevels.Add(point.y, 1);
         }
+
+        Instantiate(_impactParticles, hit.point, Quaternion.identity);
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {

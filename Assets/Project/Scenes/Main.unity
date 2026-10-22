@@ -132,6 +132,7 @@ GameObject:
   - component: {fileID: 151229148}
   - component: {fileID: 151229147}
   - component: {fileID: 151229146}
+  - component: {fileID: 151229151}
   m_Layer: 0
   m_Name: Tree
   m_TagString: Untagged
@@ -153,7 +154,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Tree
   _health: 5
   _proximityForScore: 0.3
+  _impactParticles: {fileID: 4246030293897966947, guid: dc2b7d09385cf9a408b17aa4b2a6e410, type: 3}
   _hits:
+    _dictionary: []
+    _hasDuplicates: 0
+  _hitLevels:
     _dictionary: []
     _hasDuplicates: 0
 --- !u!136 &151229147
@@ -251,6 +256,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &151229151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 151229145}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9bf06e7b9694e2042becea850f5cb6db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TreeFall
+  _fallSpeed: 25
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
