@@ -45,6 +45,26 @@ namespace SerializableTypes {
         }
 
         /// <summary>
+        /// Tries to set a value to the selected key.
+        /// </summary>
+        /// <returns>false if key doesn't exist, true otherwise</returns>
+        public bool Set(TKey key, TVal value) {
+            if (!_data.ContainsKey(key)) {
+                return false;
+            }
+
+            _data[key] = value;
+
+            for (int i = 0; i < _dictionary.Count; i++) {
+                if (_dictionary[i].Key.Equals(key)) {
+                    _dictionary[i].Value = value;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Tries to remove the key from dictionary.
         /// Removes all of the occurrences in a serialized list.
         /// </summary>

@@ -30,5 +30,7 @@ public class GameManager : MonoBehaviour {
         _playerController.isControllable = !_isPaused;
 
         _pauseMenu.SetActive(_isPaused);
+
+        Cursor.lockState = _isPaused ? CursorLockMode.None : CursorLockMode.Locked;
     }
 }
