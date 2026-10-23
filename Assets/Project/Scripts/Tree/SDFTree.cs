@@ -38,6 +38,26 @@ public class SDFTree : MonoBehaviour {
         _triangles = null;
     }
 
+    public void AddMark(Vector3 point, float size) {
+        // TODO: Rework
+        Vector3 half = (Vector3)_boxSize / 2.0f;
+
+        point = transform.InverseTransformPoint(point);
+        point = (point / _texelSize + half) - (Vector3.one * _texelSize / 2);
+
+        size /= _texelSize;
+
+        for (int i = Mathf.Max(0, (int)(point.x - size)); i < Mathf.Min(_boxSize.x, (int)(point.x + size)); i++) {
+            for (int j = Mathf.Max(0, (int)(point.y - size)); j < Mathf.Min(_boxSize.y, (int)(point.y + size)); j++) {
+                for (int k = Mathf.Max(0, (int)(point.z - size)); k < Mathf.Min(_boxSize.z, (int)(point.z + size)); k++) {
+                    Vector3 curr = new(i, j, k);
+                    _sdf[i, j, k] = Mathf.Max(_sdf[i, j, k], size - Vector3.Distance(point, curr));
+                    //Debug.DrawRay(transform.TransformPoint((curr - half) * _texelSize) + (Vector3.one * _texelSize / 2), point - curr, Color.red, 5f);
+                }
+            }
+        }
+    }
+
     private float GetSDF(Vector3 pos) {
         float smallest = float.MaxValue;
         Vector3 smallPoint = Vector3.zero;
@@ -107,19 +127,21 @@ public class SDFTree : MonoBehaviour {
     }
 
     private void OnDrawGizmosSelected() {
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireCube(transform.position, (Vector3)_boxSize * _texelSize);
-
         if (_sdf == null) {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireCube(transform.position, (Vector3)_boxSize * _texelSize);
             return;
         }
+
+        Color tmp = Color.black;
 
         Vector3 half = (Vector3)_boxSize / 2.0f;
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    Gizmos.color = Color.black * (0.2f - _sdf[i, j, k]);
-                    Gizmos.DrawWireCube(transform.position + (new Vector3(i, j, k) - half) * _texelSize + (Vector3.one * _texelSize / 2), Vector3.one * _texelSize);
+                    tmp.a = (0.2f - _sdf[i, j, k]);
+                    Gizmos.color = tmp;
+                    Gizmos.DrawWireCube(transform.TransformPoint((new Vector3(i, j, k) - half) * _texelSize) + (Vector3.one * _texelSize / 2), Vector3.one * _texelSize);
                 }
             }
         }

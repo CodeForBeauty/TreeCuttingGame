@@ -2,6 +2,7 @@ using SerializableTypes;
 using UnityEngine;
 
 [RequireComponent(typeof(TreeFall))]
+[RequireComponent(typeof(SDFTree))]
 public class Tree : MonoBehaviour, IInteractable {
     [SerializeField] private int _health = 5;
 
@@ -14,9 +15,11 @@ public class Tree : MonoBehaviour, IInteractable {
     [SerializeField] private SerializableDictionary<int, int> _hitLevels = new();
 
     private TreeFall _fall;
+    private SDFTree _sdf;
 
     private void Awake() {
         _fall = GetComponent<TreeFall>();
+        _sdf = GetComponent<SDFTree>();
     }
 
     public void Interact(InteractSystem system, RaycastHit hit) {
@@ -32,6 +35,7 @@ public class Tree : MonoBehaviour, IInteractable {
         }
 
         Instantiate(_impactParticles, hit.point, Quaternion.identity);
+        _sdf.AddMark(hit.point, 0.5f);
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {

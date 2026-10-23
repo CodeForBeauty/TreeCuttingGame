@@ -283,8 +283,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
   _mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
-  _boxSize: {x: 64, y: 64, z: 64}
-  _texelSize: 0.02
+  _boxSize: {x: 16, y: 16, z: 16}
+  _texelSize: 0.1
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
