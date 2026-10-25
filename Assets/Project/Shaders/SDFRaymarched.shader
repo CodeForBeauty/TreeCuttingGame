@@ -87,7 +87,7 @@ Shader "Custom/SDFRaymarched"
                     }
                     float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, curr / _TexSize.xyz);
                     if (sdf.a < 0.01) {
-                        OUT.color = _BaseColor;
+                        OUT.color = _BaseColor * dot(sdf.xyz, float3(0, 0.75, -0.75));
                         OUT.depth = IN.positionHCS.w;
                         return OUT;
                     }

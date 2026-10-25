@@ -19,6 +19,7 @@ public class SDFTree : MonoBehaviour {
 
     private List<Vector3> _vertices = new();
     private List<int> _triangles = new();
+    private List<Vector3> _normals = new();
 
     private void Start() {
         _boxHalfSize = (Vector3)_boxSize / 2.0f;
@@ -28,16 +29,17 @@ public class SDFTree : MonoBehaviour {
         }
 
         _tex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false);
-        _tex.filterMode = FilterMode.Bilinear;
+        //_tex.filterMode = FilterMode.Bilinear;
 
         _mesh.GetVertices(_vertices);
         _mesh.GetTriangles(_triangles, 0);
+        _mesh.GetNormals(_normals);
         _sdf = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
 
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    _sdf[i, j, k] = new Vector4(0, 0, 0, GetSDF(TexelToLocal(new Vector3Int(i, j, k))));
+                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(i, j, k)));
                 }
             }
         }
@@ -54,6 +56,7 @@ public class SDFTree : MonoBehaviour {
 
         _vertices = null;
         _triangles = null;
+        _normals = null;
     }
 
     private void Update() {
@@ -62,25 +65,44 @@ public class SDFTree : MonoBehaviour {
 
     public void AddMark(Vector3 point, float size) {
         // TODO: Rework
-        point = transform.InverseTransformPoint(point);
         point = WorldToTexel(point);
 
-        size /= _texelSize;
+        size = size / _texelSize;
 
-        for (int i = Mathf.Max(0, (int)(point.x - size)); i < Mathf.Min(_boxSize.x, (int)(point.x + size)); i++) {
-            for (int j = Mathf.Max(0, (int)(point.y - size)); j < Mathf.Min(_boxSize.y, (int)(point.y + size)); j++) {
-                for (int k = Mathf.Max(0, (int)(point.z - size)); k < Mathf.Min(_boxSize.z, (int)(point.z + size)); k++) {
+        for (int i = Mathf.Max(0, (int)(point.x - size * 2)); i < Mathf.Min(_boxSize.x, (int)(point.x + size * 2)); i++) {
+            for (int j = Mathf.Max(0, (int)(point.y - size * 2)); j < Mathf.Min(_boxSize.y, (int)(point.y + size * 2)); j++) {
+                for (int k = Mathf.Max(0, (int)(point.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(point.z + size * 2)); k++) {
                     Vector3 curr = new(i, j, k);
-                    //_sdf[i, j, k] = Mathf.Max(_sdf[i, j, k], (size - Vector3.Distance(point, curr)) / _boxHalfSize.x);
-                    //Debug.DrawRay(transform.TransformPoint((curr - half) * _texelSize) + (Vector3.one * _texelSize / 2), point - curr, Color.red, 5f);
+                    //_sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, (size - Vector3.Distance(point, curr)));
+                    if (_sdf[i, j, k].w <= 0) {
+                        float dist = Vector3.Distance(point, curr);
+                        if (dist <= size) {
+                            _sdf[i, j, k].w = (size - dist) / _boxHalfSize.x;
+                        }
+                        else {
+                            _sdf[i, j, k].w = Mathf.Min(_sdf[i, j, k].w, (size - dist) / _boxHalfSize.x);
+                        }
+                        Vector3 norm = point - curr;
+                        _sdf[i, j, k].x = norm.x;
+                        _sdf[i, j, k].y = norm.y;
+                        _sdf[i, j, k].z = norm.z;
+                    }
+                    //Debug.DrawRay(TexelToWorld(new(i, j, k)), point - curr, Color.red, 5f);
                 }
             }
         }
+
+        _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
+
+        _tex.Apply();
     }
 
-    private float GetSDF(Vector3 pos) {
+    private Vector4 GetSDF(Vector3 pos) {
         float smallest = float.MaxValue;
         float sign = 1f;
+        Vector3 smallNormal = Vector3.zero;
+
+        int smallestTri = 0;
 
         for (int i = 0; i < _triangles.Count; i += 3) {
             Vector3 a = _vertices[_triangles[i]];
@@ -107,6 +129,8 @@ public class SDFTree : MonoBehaviour {
                 if (mag < smallest) {
                     smallest = mag;
                     sign = tmpSign;
+                    smallestTri = i;
+                    smallNormal = normal;
                 }
             }
             else {
@@ -119,13 +143,40 @@ public class SDFTree : MonoBehaviour {
                 if (mag < smallest) {
                     smallest = mag;
                     sign = Vector3.Dot(normal, projected) > 0 ? 1 : -1;
+                    smallestTri = i;
+                    smallNormal = normal;
                 }
             }
         }
 
+        Vector3 a1 = _vertices[_triangles[smallestTri]];
+        Vector3 b1 = _vertices[_triangles[smallestTri + 1]];
+        Vector3 c1 = _vertices[_triangles[smallestTri + 2]];
+
+        var f1 = a1 - pos;
+        var f2 = b1 - pos;
+        var f3 = c1 - pos;
+        
+        var area = Vector3.Cross(a1 - b1, a1 - c1);
+        var va1 = Vector3.Cross(f2, f3);
+        var va2 = Vector3.Cross(f3, f1);
+        var va3 = Vector3.Cross(f1, f2);
+
+        var areaV = area.magnitude;
+
+        var ar1 = va1.magnitude / areaV * Mathf.Sign(Vector3.Dot(area, va1));
+        var ar2 = va2.magnitude / areaV * Mathf.Sign(Vector3.Dot(area, va2));
+        var ar3 = va3.magnitude / areaV * Mathf.Sign(Vector3.Dot(area, va3));
+
+        Vector3 norm = _normals[_triangles[smallestTri]] * ar1
+            + _normals[_triangles[smallestTri + 1]] * ar2
+            + _normals[_triangles[smallestTri + 2]] * ar3;
+
+        //var uv = uv1 * a1 + uv2 * a2 + uv3 * a3;
+
         //Debug.DrawRay(transform.position + smallPoint, smallNormal, Color.red, 5f);
 
-        return Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign;
+        return new Vector4(norm.x, norm.y, norm.z, Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign);
     }
 
     private Vector3Int LocalToTexel(Vector3 pos) {
@@ -159,7 +210,7 @@ public class SDFTree : MonoBehaviour {
         return a + t * ab;
     }
 
-    /*private void OnDrawGizmosSelected() {
+    private void OnDrawGizmosSelected() {
         if (_sdf == null) {
             Gizmos.color = Color.green;
             Gizmos.DrawWireCube(transform.position, (Vector3)_boxSize * _texelSize);
@@ -171,11 +222,11 @@ public class SDFTree : MonoBehaviour {
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    tmp.a = (0.2f - _sdf[i, j, k]);
+                    tmp.a = (0.2f - _sdf[i, j, k].w);
                     Gizmos.color = tmp;
                     Gizmos.DrawWireCube(TexelToWorld(new Vector3Int(i, j, k)), Vector3.one * _texelSize);
                 }
             }
         }
-    }*/
+    }
 }

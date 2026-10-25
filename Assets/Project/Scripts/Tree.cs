@@ -35,7 +35,7 @@ public class Tree : MonoBehaviour, IInteractable {
         }
 
         Instantiate(_impactParticles, hit.point, Quaternion.identity);
-        _sdf.AddMark(hit.point, 0.5f);
+        _sdf.AddMark(hit.point, 0.3f);
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {
