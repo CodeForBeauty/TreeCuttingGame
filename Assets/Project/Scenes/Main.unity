@@ -1532,10 +1532,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc6df082712232148b9c04fbd30e8a83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
-  _mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+  _mesh: {fileID: -2222346464153789849, guid: 942afbe0c9b74284fa5a2ccdf07befef, type: 3}
   _renderQuad: {fileID: 1256646970}
-  _boxSize: {x: 64, y: 64, z: 64}
-  _texelSize: 0.025
+  _boxSize: {x: 32, y: 32, z: 32}
+  _texelSize: 0.05
 --- !u!114 &1551885917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1600,7 +1600,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1551885915}
-  m_Enabled: 0
+  m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1649,7 +1649,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1551885915}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: -2222346464153789849, guid: 942afbe0c9b74284fa5a2ccdf07befef, type: 3}
 --- !u!4 &1551885922
 Transform:
   m_ObjectHideFlags: 0
@@ -1658,14 +1658,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1551885915}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 4.7, y: 2.922, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1256646968}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!1 &1662917894
 GameObject:
   m_ObjectHideFlags: 0

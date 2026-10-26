@@ -39,7 +39,7 @@ public class SDFTree : MonoBehaviour {
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(i, j, k)));
+                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(k, j, i)));
                 }
             }
         }
@@ -67,25 +67,35 @@ public class SDFTree : MonoBehaviour {
         // TODO: Rework
         point = WorldToTexel(point);
 
-        size = size / _texelSize;
+        size /= _texelSize;
 
         for (int i = Mathf.Max(0, (int)(point.x - size * 2)); i < Mathf.Min(_boxSize.x, (int)(point.x + size * 2)); i++) {
             for (int j = Mathf.Max(0, (int)(point.y - size * 2)); j < Mathf.Min(_boxSize.y, (int)(point.y + size * 2)); j++) {
                 for (int k = Mathf.Max(0, (int)(point.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(point.z + size * 2)); k++) {
-                    Vector3 curr = new(i, j, k);
+                    Vector3 curr = new(k, j, i);
                     //_sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, (size - Vector3.Distance(point, curr)));
+                    float dist = Vector3.Distance(point, curr);
                     if (_sdf[i, j, k].w <= 0) {
-                        float dist = Vector3.Distance(point, curr);
                         if (dist <= size) {
                             _sdf[i, j, k].w = (size - dist) / _boxHalfSize.x;
+                            Vector3 norm = point - curr;
+                            _sdf[i, j, k].x = norm.x;
+                            _sdf[i, j, k].y = norm.y;
+                            _sdf[i, j, k].z = norm.z;
                         }
                         else {
-                            _sdf[i, j, k].w = Mathf.Min(_sdf[i, j, k].w, (size - dist) / _boxHalfSize.x);
+                            float tmp = (size - dist) / _boxHalfSize.x;
+                            if (tmp > _sdf[i, j, k].w) {
+                                _sdf[i, j, k].w = tmp;
+                                Vector3 norm = point - curr;
+                                _sdf[i, j, k].x = norm.x;
+                                _sdf[i, j, k].y = norm.y;
+                                _sdf[i, j, k].z = norm.z;
+                            }
                         }
-                        Vector3 norm = point - curr;
-                        _sdf[i, j, k].x = norm.x;
-                        _sdf[i, j, k].y = norm.y;
-                        _sdf[i, j, k].z = norm.z;
+                    }
+                    else {
+                        _sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, (size - dist) / _boxHalfSize.x);
                     }
                     //Debug.DrawRay(TexelToWorld(new(i, j, k)), point - curr, Color.red, 5f);
                 }
@@ -213,7 +223,7 @@ public class SDFTree : MonoBehaviour {
     private void OnDrawGizmosSelected() {
         if (_sdf == null) {
             Gizmos.color = Color.green;
-            Gizmos.DrawWireCube(transform.position, (Vector3)_boxSize * _texelSize);
+            Gizmos.DrawWireCube(transform.position, TexelToLocal(_boxSize * 2));
             return;
         }
 
@@ -222,9 +232,12 @@ public class SDFTree : MonoBehaviour {
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    tmp.a = (0.2f - _sdf[i, j, k].w);
+                    if (_sdf[i, j, k].w < 0.01f) {
+
+                    //tmp.a = (0.2f - _sdf[i, j, k].w);
                     Gizmos.color = tmp;
-                    Gizmos.DrawWireCube(TexelToWorld(new Vector3Int(i, j, k)), Vector3.one * _texelSize);
+                    Gizmos.DrawWireCube(TexelToWorld(new Vector3Int(i, j, k)), Vector3.one * _texelSize * 2);
+                    }
                 }
             }
         }
