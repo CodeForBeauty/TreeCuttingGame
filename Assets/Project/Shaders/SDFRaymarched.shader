@@ -69,37 +69,35 @@ Shader "Custom/SDFRaymarched"
 
                 float3 dir = positionOS - camOS;
 
-                int maxSteps = int(length(dir) / _TexelSize + length(_TexSize.xyz));
+                int maxSteps = int(length(_TexSize)) * 4;
 
                 dir = normalize(dir);
                 float3 step = dir;
 
-                float3 curr = (camOS / _TexelSize + _TexSize.xyz / 2);
+                float3 start = (camOS / _TexelSize + _TexSize.xyz / 2);
 
-                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, curr / _TexSize.xyz);
+                float t = 0;
+
+                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (start + step * t) / _TexSize.xyz);
 
                 [loop] for (int i = 0; i < maxSteps; i++) {
+                    float3 curr = (start + step * t);
                     if (curr.x < 0 || curr.x >= _TexSize.x
                         || curr.y < 0 || curr.y >= _TexSize.y
                         || curr.z < 0 || curr.z >= _TexSize.z) {
-                        curr += step;
+                        t += 2;
                         continue;
                     }
                     float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, curr / _TexSize.xyz);
-                    if (sdf.a < 0.01) {
+                    if (abs(sdf.a) < 0.01) {
                         OUT.color = _BaseColor * dot(sdf.xyz, float3(0, 0.75, -0.75));
-                        //OUT.color = _BaseColor;
+                        //OUT.color = half4(sdf.xyz, 1);
+                        //OUT.color = half4((float)i / maxSteps, (float)i / maxSteps, (float)i / maxSteps, (float)i / maxSteps);
                         OUT.depth = IN.positionHCS.w;
                         return OUT;
                     }
-                    else if (lastSDF < sdf.a) {
-                        curr -= step * sdf.a;
-                    }
-                    else {
-                        curr += step;
-                    }
-
-                    lastSDF = sdf.a;
+                    
+                    t += sdf.a;
                 }
 
                 discard;

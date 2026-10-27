@@ -186,6 +186,9 @@ public class SDFTree : MonoBehaviour {
 
         //Debug.DrawRay(transform.position + smallPoint, smallNormal, Color.red, 5f);
 
+        smallNormal = Vector3.Normalize(smallNormal);
+
+        //return new Vector4(smallNormal.x, smallNormal.y, smallNormal.z, Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign);
         return new Vector4(norm.x, norm.y, norm.z, Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign);
     }
 
@@ -223,7 +226,7 @@ public class SDFTree : MonoBehaviour {
     private void OnDrawGizmosSelected() {
         if (_sdf == null) {
             Gizmos.color = Color.green;
-            Gizmos.DrawWireCube(transform.position, TexelToLocal(_boxSize * 2));
+            Gizmos.DrawWireCube(transform.position, Vector3.Scale((Vector3)_boxSize, transform.localScale) * _texelSize);
             return;
         }
 
