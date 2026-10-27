@@ -1534,8 +1534,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
   _mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
   _renderQuad: {fileID: 1256646970}
-  _boxSize: {x: 16, y: 16, z: 16}
-  _texelSize: 0.1
+  _boxSize: {x: 32, y: 64, z: 32}
+  _texelSize: 0.05
 --- !u!114 &1551885917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1660,7 +1660,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 4.7, y: 2.922, z: 0}
-  m_LocalScale: {x: 2, y: 2, z: 2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1256646968}

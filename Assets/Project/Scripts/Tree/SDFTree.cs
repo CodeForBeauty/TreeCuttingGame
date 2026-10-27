@@ -122,7 +122,8 @@ public class SDFTree : MonoBehaviour {
             Vector3 ac = c - a;
 
             Vector3 normal = Vector3.Cross(ab, ac);
-            Vector3 projected = Vector3.Project(pos - a, normal);
+            Vector3 posDir = pos - a;
+            Vector3 projected = Vector3.Project(posDir, normal);
 
             Vector3 onPlane = pos - projected;
 
@@ -132,13 +133,11 @@ public class SDFTree : MonoBehaviour {
             float v = Vector3.Dot(Vector3.Cross(c - pos, a - pos), normal) * invN2;
             float w = 1.0f - u - v;
 
-            float tmpSign = Vector3.Dot(normal, projected) > 0 ? 1 : -1;
-
             if (u >= 0 && v >= 0 && w >= 0) {
                 var mag = Vector3.SqrMagnitude(onPlane - pos);
                 if (mag < smallest) {
                     smallest = mag;
-                    sign = tmpSign;
+                    sign = Vector3.Dot(normal, projected) > 0 ? 1 : -1;
                     smallestTri = i;
                     smallNormal = normal;
                 }
@@ -152,7 +151,7 @@ public class SDFTree : MonoBehaviour {
                     Vector3.SqrMagnitude(qca - pos));
                 if (mag < smallest) {
                     smallest = mag;
-                    sign = Vector3.Dot(normal, projected) > 0 ? 1 : -1;
+                    sign = 1;
                     smallestTri = i;
                     smallNormal = normal;
                 }
@@ -163,24 +162,16 @@ public class SDFTree : MonoBehaviour {
         Vector3 b1 = _vertices[_triangles[smallestTri + 1]];
         Vector3 c1 = _vertices[_triangles[smallestTri + 2]];
 
-        var f1 = a1 - pos;
-        var f2 = b1 - pos;
-        var f3 = c1 - pos;
-        
-        var area = Vector3.Cross(a1 - b1, a1 - c1);
-        var va1 = Vector3.Cross(f2, f3);
-        var va2 = Vector3.Cross(f3, f1);
-        var va3 = Vector3.Cross(f1, f2);
+        float invN21 = 1 / Vector3.Dot(smallNormal, smallNormal);
 
-        var areaV = area.magnitude;
+        float u1 = Vector3.Dot(Vector3.Cross(b1 - pos, c1 - pos), smallNormal) * invN21;
+        float v1 = Vector3.Dot(Vector3.Cross(c1 - pos, a1 - pos), smallNormal) * invN21;
+        float w1 = 1.0f - u1 - v1;
 
-        var ar1 = va1.magnitude / areaV * Mathf.Sign(Vector3.Dot(area, va1));
-        var ar2 = va2.magnitude / areaV * Mathf.Sign(Vector3.Dot(area, va2));
-        var ar3 = va3.magnitude / areaV * Mathf.Sign(Vector3.Dot(area, va3));
-
-        Vector3 norm = _normals[_triangles[smallestTri]] * ar1
-            + _normals[_triangles[smallestTri + 1]] * ar2
-            + _normals[_triangles[smallestTri + 2]] * ar3;
+        Vector3 norm = _normals[_triangles[smallestTri]] * u1
+            + _normals[_triangles[smallestTri + 1]] * v1
+            + _normals[_triangles[smallestTri + 2]] * w1;
+        norm = Vector3.Normalize(norm);
 
         //var uv = uv1 * a1 + uv2 * a2 + uv3 * a3;
 
