@@ -1260,7 +1260,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
+  m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1551885922}
@@ -1532,10 +1532,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc6df082712232148b9c04fbd30e8a83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
-  _mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+  _mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   _renderQuad: {fileID: 1256646970}
-  _boxSize: {x: 32, y: 64, z: 32}
-  _texelSize: 0.05
+  _boxSize: {x: 16, y: 16, z: 16}
+  _texelSize: 0.1
 --- !u!114 &1551885917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1649,7 +1649,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1551885915}
-  m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: -251552132055743698, guid: 2cf51379775fc7e4cb8d1792f4e983a1, type: 3}
 --- !u!4 &1551885922
 Transform:
   m_ObjectHideFlags: 0
