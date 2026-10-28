@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class SDFTree : MonoBehaviour {
     [SerializeField] private Mesh _mesh;
@@ -56,7 +59,7 @@ public class SDFTree : MonoBehaviour {
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(k, j, i)), out Vector2 uv, out Vector4 tangent);
+                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(i, j, k)), out Vector2 uv, out Vector4 tangent);
                     _sdfUV[i, j, k] = uv;
                     _sdfTangent[i, j, k] = tangent;
                 }
@@ -90,48 +93,105 @@ public class SDFTree : MonoBehaviour {
         _mat.SetMatrix("_InvObjectTransform", transform.worldToLocalMatrix);
     }
 
-    public void AddMark(Vector3 point, float size) {
-        // TODO: Rework
-        point = WorldToTexel(point);
+    public void AddMark(Vector3 point, Vector3 forward, float size) {
+        Vector3 texelPoint = WorldToTexelF(point);
+        Vector3 texelPointTMP = WorldToTexelF(point - forward * 0.5f);
+
+        forward = Quaternion.Inverse(transform.rotation) * forward;
+
+        float t = 0f;
+
+        bool hasHit = false;
+
+        for (int i = 0; i < 100; i++) {
+            Vector3 curr = (texelPointTMP + forward * t);
+            //Debug.DrawLine(point, TexelToWorld(curr), Color.red, 5f);
+            if (curr.x < 0 || curr.x >= _boxSize.x
+                || curr.y < 0 || curr.y >= _boxSize.y
+                || curr.z < 0 || curr.z >= _boxSize.z) {
+                t += 2;
+                continue;
+            }
+
+            Vector3Int currInt = Vector3Int.FloorToInt(curr);
+
+            var sdf = _sdf[currInt.x, currInt.y, currInt.z];
+
+            if (sdf.w < 0.015f) {
+                texelPoint = currInt;
+                hasHit = true;
+                break;
+            }
+
+            t += sdf.w;
+        }
 
         size /= _texelSize;
 
-        for (int i = Mathf.Max(0, (int)(point.x - size * 2)); i < Mathf.Min(_boxSize.x, (int)(point.x + size * 2)); i++) {
-            for (int j = Mathf.Max(0, (int)(point.y - size * 2)); j < Mathf.Min(_boxSize.y, (int)(point.y + size * 2)); j++) {
-                for (int k = Mathf.Max(0, (int)(point.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(point.z + size * 2)); k++) {
-                    Vector3 curr = new(k, j, i);
-                    //_sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, (size - Vector3.Distance(point, curr)));
-                    float dist = Vector3.Distance(point, curr);
-                    if (_sdf[i, j, k].w <= 0) {
+        if (!hasHit) {
+            print(t);
+            //return;
+        }
+
+        for (int i = Mathf.Max(0, (int)(texelPoint.x - size * 2)); i < Mathf.Min(_boxSize.x, (int)(texelPoint.x + size * 2)); i++) {
+            for (int j = Mathf.Max(0, (int)(texelPoint.y - size * 2)); j < Mathf.Min(_boxSize.y, (int)(texelPoint.y + size * 2)); j++) {
+                for (int k = Mathf.Max(0, (int)(texelPoint.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(texelPoint.z + size * 2)); k++) {
+                    Vector3 curr = new(i, j, k);
+                    Debug.DrawLine(TexelToWorld(texelPoint), TexelToWorld(curr), Color.red, 5f);
+                    float dist = Vector3.Distance(texelPoint, curr);
+                    if (_sdf[i, j, k].w <= -0.015f) {
                         if (dist <= size) {
                             _sdf[i, j, k].w = (size - dist) / _boxHalfSize.x;
-                            Vector3 norm = point - curr;
+                            Vector3 norm = Vector3.Normalize(texelPoint - curr);
                             _sdf[i, j, k].x = norm.x;
                             _sdf[i, j, k].y = norm.y;
                             _sdf[i, j, k].z = norm.z;
+
+                            Vector3 tang;
+                            if (Mathf.Abs(j) > _boxHalfSize.y) {
+                                tang = Vector3.Cross(norm, Vector3.right);
+                            }
+                            else {
+                                tang = Vector3.Cross(norm, Vector3.up);
+                            }
+                            _sdfTangent[i, j, k].x = tang.x;
+                            _sdfTangent[i, j, k].y = tang.y;
+                            _sdfTangent[i, j, k].z = tang.z;
                         }
                         else {
                             float tmp = (size - dist) / _boxHalfSize.x;
                             if (tmp > _sdf[i, j, k].w) {
                                 _sdf[i, j, k].w = tmp;
-                                Vector3 norm = point - curr;
+                                Vector3 norm = Vector3.Normalize(texelPoint - curr);
                                 _sdf[i, j, k].x = norm.x;
                                 _sdf[i, j, k].y = norm.y;
                                 _sdf[i, j, k].z = norm.z;
+
+                                Vector3 tang;
+                                if (Mathf.Abs(j) > _boxHalfSize.y) {
+                                    tang = Vector3.Cross(norm, Vector3.right);
+                                }
+                                else {
+                                    tang = Vector3.Cross(norm, Vector3.up);
+                                }
+                                _sdfTangent[i, j, k].x = tang.x;
+                                _sdfTangent[i, j, k].y = tang.y;
+                                _sdfTangent[i, j, k].z = tang.z;
                             }
                         }
                     }
                     else {
                         _sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, (size - dist) / _boxHalfSize.x);
                     }
-                    //Debug.DrawRay(TexelToWorld(new(i, j, k)), point - curr, Color.red, 5f);
                 }
             }
         }
 
         _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
+        _tangentTex.SetPixelData(_sdfTangent.Cast<Vector4>().ToArray(), 0);
 
         _tex.Apply();
+        _tangentTex.Apply();
     }
 
     private Vector4 GetSDF(Vector3 pos, out Vector2 uv, out Vector4 tangent) {
@@ -210,12 +270,12 @@ public class SDFTree : MonoBehaviour {
 
         float signedDist = Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign;
 
-        tangent.w = Mathf.Max(-(signedDist + 0.15f) / 0.1f, 0);
+        tangent.w = Mathf.Clamp01(-(signedDist + 0.15f) / 0.1f);
 
         if (signedDist < 0) {
             Vector2 newUV = new(norm.x, norm.z);
             newUV = Vector2.Normalize(newUV);
-            uv = newUV * -signedDist;
+            uv = newUV * -signedDist * 2f + Vector2.one;
         }
 
         return new Vector4(norm.x, norm.y, norm.z, signedDist);
@@ -233,8 +293,12 @@ public class SDFTree : MonoBehaviour {
         return Vector3Int.FloorToInt(transform.InverseTransformPoint(pos) / _texelSize + _boxHalfSize);
     }
 
-    private Vector3 TexelToWorld(Vector3Int pos) {
-        return transform.TransformPoint(((Vector3)pos - _boxHalfSize) * _texelSize);
+    private Vector3 WorldToTexelF(Vector3 pos) {
+        return transform.InverseTransformPoint(pos) / _texelSize + _boxHalfSize;
+    }
+
+    private Vector3 TexelToWorld(Vector3 pos) {
+        return transform.TransformPoint((pos - _boxHalfSize) * _texelSize);
     }
 
     private float TexelToLocal(float val) {

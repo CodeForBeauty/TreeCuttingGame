@@ -99,7 +99,7 @@ Shader "Custom/SDFRaymarched"
 
                 float3 dir = positionOS - camOS;
 
-                int maxSteps = int(length(_TexSize)) * 4;
+                int maxSteps = int(length(_TexSize)) * 8;
 
                 dir = normalize(dir);
                 float3 step = dir;
@@ -108,7 +108,7 @@ Shader "Custom/SDFRaymarched"
 
                 float t = 0;
 
-                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (start + step * t) / _TexSize.xyz);
+                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, ((start + step * t) / _TexSize.xyz).zyx);
 
                 [loop] for (int i = 0; i < maxSteps; i++) {
                     float3 curr = (start + step * t);
@@ -118,16 +118,16 @@ Shader "Custom/SDFRaymarched"
                         t += 2;
                         continue;
                     }
-                    float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, curr / _TexSize.xyz);
+                    float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (curr / _TexSize.xyz).zyx);
                     if (abs(sdf.a) < 0.015) {
                         // Attribute calculation
                         float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (t * _TexelSize);
 
-                        float2 uv = SAMPLE_TEXTURE3D(_SDFUVTexture, sampler_SDFUVTexture, curr / _TexSize.xyz).xy;
+                        float2 uv = SAMPLE_TEXTURE3D(_SDFUVTexture, sampler_SDFUVTexture, (curr / _TexSize.xyz).zyx).xy;
 
                         float3x3 M = transpose((float3x3)(_InvObjectTransform));
 
-                        float4 T = SAMPLE_TEXTURE3D(_SDFTangentTexture, sampler_SDFTangentTexture, curr / _TexSize.xyz);
+                        float4 T = SAMPLE_TEXTURE3D(_SDFTangentTexture, sampler_SDFTangentTexture, (curr / _TexSize.xyz).zyx);
                         float3 tangent = T.xyz;
 
                         float3 N = sdf.xyz;
@@ -160,7 +160,8 @@ Shader "Custom/SDFRaymarched"
 		                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
 		                float3 specular1 = _SpecularMult * spec * mainLight.color;
 
-		                float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
+		                //float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
+		                float3 res = (diff * mainLight.color) * albedo.xyz * shadow;
 		                lighting += res;
 
                         OUT.color = half4(lighting, 1);
@@ -267,7 +268,7 @@ Shader "Custom/SDFRaymarched"
 
                 float t = 0;
 
-                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (start + step * t) / _TexSize.xyz);
+                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, ((start + step * t) / _TexSize.xyz).zyx);
 
                 [loop] for (int i = 0; i < maxSteps; i++) {
                     float3 curr = (start + step * t);
@@ -277,7 +278,7 @@ Shader "Custom/SDFRaymarched"
                         t += 2;
                         continue;
                     }
-                    float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, curr / _TexSize.xyz);
+                    float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (curr / _TexSize.xyz).zyx);
                     if (abs(sdf.a) < 0.015) {
                         float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (t * _TexelSize);
 

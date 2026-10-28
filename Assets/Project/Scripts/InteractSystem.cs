@@ -18,7 +18,7 @@ public class InteractSystem : MonoBehaviour {
         }
         if (context.started && Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, _interactDistance)) {
             if (hit.transform.gameObject.TryGetComponent(out IInteractable interactable)) {
-                interactable.Interact(this, hit);
+                interactable.Interact(this, hit, transform.forward);
                 _interactTimeout = _interactInterval;
             }
         }

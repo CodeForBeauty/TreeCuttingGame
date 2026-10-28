@@ -22,7 +22,7 @@ public class Tree : MonoBehaviour, IInteractable {
         _sdf = GetComponent<SDFTree>();
     }
 
-    public void Interact(InteractSystem system, RaycastHit hit) {
+    public void Interact(InteractSystem system, RaycastHit hit, Vector3 forward) {
         Vector3Int point = Map(hit.point);
 
         if (_hits.Data.ContainsKey(point)) {
@@ -35,7 +35,8 @@ public class Tree : MonoBehaviour, IInteractable {
         }
 
         Instantiate(_impactParticles, hit.point, Quaternion.identity);
-        _sdf.AddMark(hit.point, 0.3f);
+        _sdf.AddMark(hit.point - forward * 0.5f, forward, 0.3f);
+        //_sdf.AddMark(hit.point, -hit.normal, 0.3f);
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {
