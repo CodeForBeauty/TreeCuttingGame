@@ -101,11 +101,9 @@ public class SDFTree : MonoBehaviour {
 
         float t = 0f;
 
-        bool hasHit = false;
 
         for (int i = 0; i < 100; i++) {
             Vector3 curr = (texelPointTMP + forward * t);
-            //Debug.DrawLine(point, TexelToWorld(curr), Color.red, 5f);
             if (curr.x < 0 || curr.x >= _boxSize.x
                 || curr.y < 0 || curr.y >= _boxSize.y
                 || curr.z < 0 || curr.z >= _boxSize.z) {
@@ -119,7 +117,6 @@ public class SDFTree : MonoBehaviour {
 
             if (sdf.w < 0.015f) {
                 texelPoint = currInt;
-                hasHit = true;
                 break;
             }
 
@@ -128,16 +125,10 @@ public class SDFTree : MonoBehaviour {
 
         size /= _texelSize;
 
-        if (!hasHit) {
-            print(t);
-            //return;
-        }
-
         for (int i = Mathf.Max(0, (int)(texelPoint.x - size * 2)); i < Mathf.Min(_boxSize.x, (int)(texelPoint.x + size * 2)); i++) {
             for (int j = Mathf.Max(0, (int)(texelPoint.y - size * 2)); j < Mathf.Min(_boxSize.y, (int)(texelPoint.y + size * 2)); j++) {
                 for (int k = Mathf.Max(0, (int)(texelPoint.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(texelPoint.z + size * 2)); k++) {
                     Vector3 curr = new(i, j, k);
-                    Debug.DrawLine(TexelToWorld(texelPoint), TexelToWorld(curr), Color.red, 5f);
                     float dist = Vector3.Distance(texelPoint, curr);
                     if (_sdf[i, j, k].w <= -0.015f) {
                         if (dist <= size) {

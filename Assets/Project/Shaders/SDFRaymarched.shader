@@ -138,7 +138,7 @@ Shader "Custom/SDFRaymarched"
                         normal = mul(M, normal);
 
                         // Shading
-                        float4 albedo = lerp(SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv),
+                        float4 albedo = _BaseColor * lerp(SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv),
                                             SAMPLE_TEXTURE2D(_InsideTexture, sampler_InsideTexture, uv), T.w);
 
                         float3 viewDir = normalize(camWS - IN.positionWS);
@@ -160,12 +160,10 @@ Shader "Custom/SDFRaymarched"
 		                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
 		                float3 specular1 = _SpecularMult * spec * mainLight.color;
 
-		                //float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
-		                float3 res = (diff * mainLight.color) * albedo.xyz * shadow;
+		                float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
 		                lighting += res;
 
                         OUT.color = half4(lighting, 1);
-                        //OUT.color = half4(T.w, T.w, T.w, 1);
 
                         // Depth
                         float4 posHCS = TransformWorldToHClip(worldPos);
