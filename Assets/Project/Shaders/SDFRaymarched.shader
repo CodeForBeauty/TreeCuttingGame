@@ -4,7 +4,9 @@ Shader "Custom/SDFRaymarched"
     {
         [MainColor] _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         [MainTexture] _DiffuseTexture("Diffuse Texture", 2D) = "white" {}
+        _NormalTexture("Normal Texture", 2D) = "bump" {}
         _SDFTexture("SDF Texture", 3D) = "black" {}
+        _SDFTangentTexture("SDF Tangent Texture", 3D) = "black" {}
         _SDFUVTexture("SDF UV Texture", 3D) = "black" {}
         _TexelSize("Texel Size", float) = 0.1
         _TexSize("Texture Size", Vector) = (1, 1, 1, 1)
@@ -45,10 +47,16 @@ Shader "Custom/SDFRaymarched"
 
             TEXTURE2D(_DiffuseTexture);
             SAMPLER(sampler_DiffuseTexture);
+
+            TEXTURE2D(_NormalTexture);
+            SAMPLER(sampler_NormalTexture);
             
             TEXTURE3D(_SDFTexture);
             SAMPLER(sampler_SDFTexture);
 
+            TEXTURE3D(_SDFTangentTexture);
+            SAMPLER(sampler_SDFTangentTexture);
+            
             TEXTURE3D(_SDFUVTexture);
             SAMPLER(sampler_SDFUVTexture);
 
@@ -103,9 +111,48 @@ Shader "Custom/SDFRaymarched"
                     }
                     float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, curr / _TexSize.xyz);
                     if (abs(sdf.a) < 0.015) {
+                        // Attribute calculation
                         float2 uv = SAMPLE_TEXTURE3D(_SDFUVTexture, sampler_SDFUVTexture, curr / _TexSize.xyz).xy;
-                        float4 diffuse = SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv);
-                        OUT.color = _BaseColor * diffuse * dot(sdf.xyz, float3(0, 0.75, -0.75));
+
+                        float3x3 M = transpose((float3x3)(_InvObjectTransform));
+
+                        float4 T = SAMPLE_TEXTURE3D(_SDFTangentTexture, sampler_SDFTangentTexture, curr / _TexSize.xyz);
+                        float3 tangent = T.xyz;
+
+                        float3 N = sdf.xyz;
+
+                        float3x3 tbn = float3x3(tangent, normalize(cross(tangent, N)) * T.w, N);
+
+                        float3 normal = mul(UnpackNormal(SAMPLE_TEXTURE2D(_NormalTexture, sampler_NormalTexture, uv)), tbn);
+                        normal = mul(M, normal);
+
+                        // Shading
+                        float4 albedo = _BaseColor * SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv);
+                        float specular = 0.5;
+
+                        float3 viewDir = normalize(camWS - IN.positionWS);
+
+	                    float ratio = 1.00 / 1.52;
+	                    float3 posDir = normalize(-viewDir);
+	                    float3 reflDir = refract(posDir, normal, ratio);
+
+	                    float3 lighting = albedo.xyz * 0.3;// * texture(u_Skybox, reflDir).rgb;
+
+	                    //float shadow = texture(u_Shadow, vUV).r / (u_DirectCount + u_SpotCount + u_PointCount);
+
+                        float3 lightDir = float3(0, -0.75, 0.75);
+                        float diff = max(dot(normal, -lightDir), 0.0);
+
+		                float3 reflectDir = reflect(lightDir, normal);
+		                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+		                float3 specular1 = specular * spec;
+
+		                float3 res = (diff + specular1) * albedo.xyz;// * shadow;
+		                lighting += res;
+
+                        OUT.color = half4(lighting, 1);
+
+                        // Depth
                         float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (t * _TexelSize);
                         float4 posHCS = TransformWorldToHClip(worldPos);
                         OUT.depth = posHCS.z / posHCS.w;

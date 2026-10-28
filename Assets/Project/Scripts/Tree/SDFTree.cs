@@ -16,13 +16,16 @@ public class SDFTree : MonoBehaviour {
     private Material _mat = null;
 
     private Texture3D _uvTex = null;
+    private Texture3D _tangentTex = null;
 
     private Vector4[,,] _sdf;
     private Vector2[,,] _sdfUV;
+    private Vector4[,,] _sdfTangent;
 
     private List<Vector3> _vertices = new();
     private List<int> _triangles = new();
     private List<Vector3> _normals = new();
+    private List<Vector4> _tangents = new();
     private List<Vector2> _uvs = new();
 
     private void Start() {
@@ -38,31 +41,40 @@ public class SDFTree : MonoBehaviour {
         _uvTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGFloat, false);
         _uvTex.filterMode = FilterMode.Bilinear;
 
+        _tangentTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false);
+        _tangentTex.filterMode = FilterMode.Bilinear;
+
         _mesh.GetVertices(_vertices);
         _mesh.GetTriangles(_triangles, 0);
         _mesh.GetNormals(_normals);
+        _mesh.GetTangents(_tangents);
         _mesh.GetUVs(0, _uvs);
         _sdf = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
         _sdfUV = new Vector2[_boxSize.x, _boxSize.y, _boxSize.z];
+        _sdfTangent = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
 
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(k, j, i)), out Vector2 uv);
+                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(k, j, i)), out Vector2 uv, out Vector4 tangent);
                     _sdfUV[i, j, k] = uv;
+                    _sdfTangent[i, j, k] = tangent;
                 }
             }
         }
 
         _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
         _uvTex.SetPixelData(_sdfUV.Cast<Vector2>().ToArray(), 0);
+        _tangentTex.SetPixelData(_sdfTangent.Cast<Vector4>().ToArray(), 0);
 
         _tex.Apply();
         _uvTex.Apply();
+        _tangentTex.Apply();
 
         _mat = _renderQuad.material;
 
         _mat.SetTexture("_SDFTexture", _tex);
+        _mat.SetTexture("_SDFTangentTexture", _tangentTex);
         _mat.SetTexture("_SDFUVTexture", _uvTex);
         _mat.SetFloat("_TexelSize", _texelSize);
         _mat.SetVector("_TexSize", new Vector4(_boxSize.x, _boxSize.y, _boxSize.z));
@@ -70,6 +82,7 @@ public class SDFTree : MonoBehaviour {
         _vertices = null;
         _triangles = null;
         _normals = null;
+        _tangents = null;
         _uvs = null;
     }
 
@@ -121,7 +134,7 @@ public class SDFTree : MonoBehaviour {
         _tex.Apply();
     }
 
-    private Vector4 GetSDF(Vector3 pos, out Vector2 uv) {
+    private Vector4 GetSDF(Vector3 pos, out Vector2 uv, out Vector4 tangent) {
         float smallest = float.MaxValue;
         float sign = 1f;
         Vector3 smallNormal = Vector3.zero;
@@ -182,12 +195,19 @@ public class SDFTree : MonoBehaviour {
         float v1 = Vector3.Dot(Vector3.Cross(c1 - pos, a1 - pos), smallNormal) * invN21;
         float w1 = 1.0f - u1 - v1;
 
-        Vector3 norm = a1 * u1 + b1 * v1 + c1 * w1;
+        Vector3 norm = _normals[_triangles[smallestTri]] * u1
+            + _normals[_triangles[smallestTri + 1]] * v1
+            + _normals[_triangles[smallestTri + 2]] * w1;
         norm = Vector3.Normalize(norm);
 
         uv = _uvs[_triangles[smallestTri]] * u1
             + _uvs[_triangles[smallestTri + 1]] * v1
             + _uvs[_triangles[smallestTri + 2]] * w1;
+
+        tangent = _tangents[_triangles[smallestTri]] * u1
+            + _tangents[_triangles[smallestTri + 1]] * v1
+            + _tangents[_triangles[smallestTri + 2]] * w1;
+        tangent.w = 1;
 
         return new Vector4(norm.x, norm.y, norm.z, Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign);
     }

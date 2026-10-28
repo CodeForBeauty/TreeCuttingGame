@@ -1532,7 +1532,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc6df082712232148b9c04fbd30e8a83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
-  _mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  _mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
   _renderQuad: {fileID: 1256646970}
   _boxSize: {x: 16, y: 16, z: 16}
   _texelSize: 0.1
