@@ -207,9 +207,18 @@ public class SDFTree : MonoBehaviour {
         tangent = _tangents[_triangles[smallestTri]] * u1
             + _tangents[_triangles[smallestTri + 1]] * v1
             + _tangents[_triangles[smallestTri + 2]] * w1;
-        tangent.w = 1;
 
-        return new Vector4(norm.x, norm.y, norm.z, Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign);
+        float signedDist = Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign;
+
+        tangent.w = Mathf.Max(-(signedDist + 0.15f) / 0.1f, 0);
+
+        if (signedDist < 0) {
+            Vector2 newUV = new(norm.x, norm.z);
+            newUV = Vector2.Normalize(newUV);
+            uv = newUV * -signedDist;
+        }
+
+        return new Vector4(norm.x, norm.y, norm.z, signedDist);
     }
 
     private Vector3Int LocalToTexel(Vector3 pos) {

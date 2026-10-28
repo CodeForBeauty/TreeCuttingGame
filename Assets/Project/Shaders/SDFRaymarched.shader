@@ -6,6 +6,7 @@ Shader "Custom/SDFRaymarched"
         [MainTexture] _DiffuseTexture("Diffuse Texture", 2D) = "white" {}
         _NormalTexture("Normal Texture", 2D) = "bump" {}
         _SpecularMult("Specular", float) = 0.5
+        _InsideTexture("Inside Texture", 2D) = "black" {}
         _SDFTexture("SDF Texture", 3D) = "black" {}
         _SDFTangentTexture("SDF Tangent Texture", 3D) = "black" {}
         _SDFUVTexture("SDF UV Texture", 3D) = "black" {}
@@ -54,6 +55,9 @@ Shader "Custom/SDFRaymarched"
 
             TEXTURE2D(_NormalTexture);
             SAMPLER(sampler_NormalTexture);
+
+            TEXTURE2D(_InsideTexture);
+            SAMPLER(sampler_InsideTexture);
             
             TEXTURE3D(_SDFTexture);
             SAMPLER(sampler_SDFTexture);
@@ -134,8 +138,8 @@ Shader "Custom/SDFRaymarched"
                         normal = mul(M, normal);
 
                         // Shading
-                        float4 albedo = _BaseColor * SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv);
-                        float specular = 0.5;
+                        float4 albedo = lerp(SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv),
+                                            SAMPLE_TEXTURE2D(_InsideTexture, sampler_InsideTexture, uv), T.w);
 
                         float3 viewDir = normalize(camWS - IN.positionWS);
 
@@ -154,12 +158,13 @@ Shader "Custom/SDFRaymarched"
 
 		                float3 reflectDir = reflect(lightDir, normal);
 		                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-		                float3 specular1 = _SpecularMult * specular * spec * mainLight.color;
+		                float3 specular1 = _SpecularMult * spec * mainLight.color;
 
 		                float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
 		                lighting += res;
 
                         OUT.color = half4(lighting, 1);
+                        //OUT.color = half4(T.w, T.w, T.w, 1);
 
                         // Depth
                         float4 posHCS = TransformWorldToHClip(worldPos);
