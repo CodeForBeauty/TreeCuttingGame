@@ -40,6 +40,7 @@ public class Tree : MonoBehaviour, IInteractable {
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {
+                _sdf.Separate(UnMap(point));
                 TreeFall(h.Key, hit.normal);
             }
         }
@@ -72,6 +73,6 @@ public class Tree : MonoBehaviour, IInteractable {
     }
 
     private Vector3 UnMap(Vector3Int vec) {
-        return (Vector3)vec * _proximityForScore;
+        return transform.TransformPoint((Vector3)vec * _proximityForScore);
     }
 }

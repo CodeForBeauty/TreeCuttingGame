@@ -15,8 +15,12 @@ public class SDFTree : MonoBehaviour {
 
     [SerializeField] private float _texelSize = 0.05f;
 
+    [SerializeField] private Transform _fallingTransform;
+    [SerializeField] private Renderer _fallingRenderer;
+
     private Texture3D _tex = null;
     private Material _mat = null;
+    private Material _fallingMat = null;
 
     private Texture3D _uvTex = null;
     private Texture3D _tangentTex = null;
@@ -87,10 +91,73 @@ public class SDFTree : MonoBehaviour {
         _normals = null;
         _tangents = null;
         _uvs = null;
+
+        _fallingTransform.gameObject.SetActive(false);
     }
 
     private void Update() {
         _mat.SetMatrix("_InvObjectTransform", transform.worldToLocalMatrix);
+        if (_fallingMat != null) {
+            _fallingMat.SetMatrix("_InvObjectTransform", _fallingTransform.worldToLocalMatrix);
+        }
+    }
+
+    private void OnDestroy() {
+        Destroy(_fallingMat);
+    }
+
+    public void Separate(Vector3 position) {
+        Vector3 texelPos = WorldToTexelF(position);
+
+        float affectRadius = LocalToTexel(0.3f);
+
+        for (int j = Mathf.Max((int)(texelPos.y - affectRadius), 0); j < Mathf.Min((int)(texelPos.y + affectRadius), _boxSize.y); j++) {
+            for (int i = 0; i < _boxSize.x; i++) {
+                for (int k = 0; k < _boxSize.z; k++) {
+                    float dist = Mathf.Abs(texelPos.y - j) - 1f;
+
+                    if (_sdf[i, j, k].w <= 0.015f) {
+                        float tmp = -dist / _boxHalfSize.x;
+                        if (tmp > _sdf[i, j, k].w) {
+                            _sdf[i, j, k].w = tmp;
+                            Vector3 norm = Vector3.Normalize(Vector3.up * ((texelPos.y - j) > 0 ? 1f : -1f));
+                            _sdf[i, j, k].x = norm.x;
+                            _sdf[i, j, k].y = norm.y;
+                            _sdf[i, j, k].z = norm.z;
+                            //print(norm);
+                            if (!IsNormal(norm)) {
+                                print(norm);
+                            }
+
+                            Vector3 tang = Vector3.Cross(norm, -Vector3.right);
+                            _sdfTangent[i, j, k].x = tang.x;
+                            _sdfTangent[i, j, k].y = tang.y;
+                            _sdfTangent[i, j, k].z = tang.z;
+                            if (!IsNormal(tang)) {
+                                print(tang);
+                            }
+                        }
+                    }
+                    else {
+                        _sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, dist / _boxHalfSize.x);
+                    }
+                }
+            }
+        }
+
+        _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
+
+        _tex.Apply();
+
+        _mat.SetVector("_SeparatePoint", new Vector4(texelPos.y, -1));
+
+        _fallingMat = Instantiate(_mat);
+
+        _fallingMat.SetVector("_SeparatePoint", new Vector4(texelPos.y + 1, 1));
+
+        _fallingTransform.gameObject.SetActive(true);
+
+        _fallingRenderer.material = _fallingMat;
     }
 
     public void AddMark(Vector3 point, Vector3 forward, float size) {
@@ -102,7 +169,7 @@ public class SDFTree : MonoBehaviour {
         float t = 0f;
 
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 200; i++) {
             Vector3 curr = (texelPointTMP + forward * t);
             if (curr.x < 0 || curr.x >= _boxSize.x
                 || curr.y < 0 || curr.y >= _boxSize.y
@@ -133,13 +200,22 @@ public class SDFTree : MonoBehaviour {
                     if (_sdf[i, j, k].w <= -0.015f) {
                         if (dist <= size) {
                             _sdf[i, j, k].w = (size - dist) / _boxHalfSize.x;
-                            Vector3 norm = Vector3.Normalize(texelPoint - curr);
+                            Vector3 norm;
+                            if (Mathf.Abs(dist) <= 0.015f) {
+                                norm = -forward;
+                            }
+                            else {
+                                 norm = Vector3.Normalize(texelPoint - curr);
+                            }
+                            if (!IsNormal(norm)) {
+                                print(norm);
+                            }
                             _sdf[i, j, k].x = norm.x;
                             _sdf[i, j, k].y = norm.y;
                             _sdf[i, j, k].z = norm.z;
 
                             Vector3 tang;
-                            if (Mathf.Abs(j) > _boxHalfSize.y) {
+                            if (Mathf.Abs(Vector3.Dot(Vector3.Normalize(curr - texelPoint), Vector3.up)) >= 0.95f) {
                                 tang = Vector3.Cross(norm, Vector3.right);
                             }
                             else {
@@ -148,6 +224,9 @@ public class SDFTree : MonoBehaviour {
                             _sdfTangent[i, j, k].x = tang.x;
                             _sdfTangent[i, j, k].y = tang.y;
                             _sdfTangent[i, j, k].z = tang.z;
+                            if (!IsNormal(tang)) {
+                                print(tang);
+                            }
                         }
                         else {
                             float tmp = (size - dist) / _boxHalfSize.x;
@@ -157,9 +236,12 @@ public class SDFTree : MonoBehaviour {
                                 _sdf[i, j, k].x = norm.x;
                                 _sdf[i, j, k].y = norm.y;
                                 _sdf[i, j, k].z = norm.z;
+                                if (!IsNormal(norm)) {
+                                    print(norm);
+                                }
 
                                 Vector3 tang;
-                                if (Mathf.Abs(j) > _boxHalfSize.y) {
+                                if (Mathf.Abs(Vector3.Dot(Vector3.Normalize(curr - texelPoint), Vector3.up)) >= 0.95f) {
                                     tang = Vector3.Cross(norm, Vector3.right);
                                 }
                                 else {
@@ -168,6 +250,9 @@ public class SDFTree : MonoBehaviour {
                                 _sdfTangent[i, j, k].x = tang.x;
                                 _sdfTangent[i, j, k].y = tang.y;
                                 _sdfTangent[i, j, k].z = tang.z;
+                                if (!IsNormal(tang)) {
+                                    print(tang);
+                                }
                             }
                         }
                     }
@@ -183,6 +268,11 @@ public class SDFTree : MonoBehaviour {
 
         _tex.Apply();
         _tangentTex.Apply();
+    }
+
+    private bool IsNormal(Vector3 vec) {
+        return !float.IsNaN(vec.x) && !float.IsNaN(vec.y) && !float.IsNaN(vec.z)
+            && !float.IsInfinity(vec.x) && !float.IsInfinity(vec.y) && !float.IsInfinity(vec.z);
     }
 
     private Vector4 GetSDF(Vector3 pos, out Vector2 uv, out Vector4 tangent) {
@@ -250,6 +340,9 @@ public class SDFTree : MonoBehaviour {
             + _normals[_triangles[smallestTri + 1]] * v1
             + _normals[_triangles[smallestTri + 2]] * w1;
         norm = Vector3.Normalize(norm);
+        if (!IsNormal(norm)) {
+            print(norm);
+        }
 
         uv = _uvs[_triangles[smallestTri]] * u1
             + _uvs[_triangles[smallestTri + 1]] * v1
@@ -258,6 +351,9 @@ public class SDFTree : MonoBehaviour {
         tangent = _tangents[_triangles[smallestTri]] * u1
             + _tangents[_triangles[smallestTri + 1]] * v1
             + _tangents[_triangles[smallestTri + 2]] * w1;
+        if (!IsNormal(tangent)) {
+            print(tangent);
+        }
 
         float signedDist = Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign;
 
@@ -266,7 +362,7 @@ public class SDFTree : MonoBehaviour {
         if (signedDist < 0) {
             Vector2 newUV = new(norm.x, norm.z);
             newUV = Vector2.Normalize(newUV);
-            uv = newUV * -signedDist * 2f + Vector2.one;
+            uv = newUV * -signedDist / 2f + Vector2.one * 0.5f;
         }
 
         return new Vector4(norm.x, norm.y, norm.z, signedDist);

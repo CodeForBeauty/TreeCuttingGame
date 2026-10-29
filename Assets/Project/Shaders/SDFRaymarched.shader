@@ -12,6 +12,7 @@ Shader "Custom/SDFRaymarched"
         _SDFUVTexture("SDF UV Texture", 3D) = "black" {}
         _TexelSize("Texel Size", float) = 0.1
         _TexSize("Texture Size", Vector) = (1, 1, 1, 1)
+        _SeparatePoint("Separation Point", Vector) = (0, 0, 0, 0)
     }
 
     SubShader
@@ -74,6 +75,7 @@ Shader "Custom/SDFRaymarched"
                 float4x4 _InvObjectTransform;
                 float _TexelSize;
                 float4 _TexSize;
+                float4 _SeparatePoint;
             CBUFFER_END
 
 
@@ -113,7 +115,8 @@ Shader "Custom/SDFRaymarched"
                 [loop] for (int i = 0; i < maxSteps; i++) {
                     float3 curr = (start + step * t);
                     if (curr.x < 0 || curr.x >= _TexSize.x
-                        || curr.y < 0 || curr.y >= _TexSize.y
+                        || curr.y < (_SeparatePoint.y > 0 ? _SeparatePoint.x : 0) || curr.y >= (_SeparatePoint.y < 0 ? _SeparatePoint.x : _TexSize.y)
+                        //|| curr.y < 0 || curr.y >= _TexSize.y
                         || curr.z < 0 || curr.z >= _TexSize.z) {
                         t += 2;
                         continue;
@@ -128,18 +131,18 @@ Shader "Custom/SDFRaymarched"
                         float3x3 M = transpose((float3x3)(_InvObjectTransform));
 
                         float4 T = SAMPLE_TEXTURE3D(_SDFTangentTexture, sampler_SDFTangentTexture, (curr / _TexSize.xyz).zyx);
-                        float3 tangent = T.xyz;
+                        float3 tangent = normalize(T.xyz);
 
                         float3 N = sdf.xyz;
 
-                        float3x3 tbn = float3x3(tangent, normalize(cross(tangent, N)) * T.w, N);
+                        float3x3 tbn = float3x3(tangent, normalize(cross(tangent, N)), N);
 
                         float3 normal = mul(UnpackNormal(SAMPLE_TEXTURE2D(_NormalTexture, sampler_NormalTexture, uv)), tbn);
                         normal = mul(M, normal);
 
                         // Shading
                         float4 albedo = _BaseColor * lerp(SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv),
-                                            SAMPLE_TEXTURE2D(_InsideTexture, sampler_InsideTexture, uv), T.w);
+                                            SAMPLE_TEXTURE2D(_InsideTexture, sampler_InsideTexture, uv), clamp(T.w, 0, 1));
 
                         float3 viewDir = normalize(camWS - IN.positionWS);
 

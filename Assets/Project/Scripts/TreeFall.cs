@@ -4,7 +4,9 @@ public class TreeFall : MonoBehaviour {
     [Range(1f, 360f)]
     [SerializeField] private float _fallSpeed = 25f;
 
-    // local
+    [SerializeField] private Transform _fallingTransform;
+
+    // world
     private Vector3 _hitPoint = Vector3.zero;
     private bool _isFalling = false;
 
@@ -15,7 +17,7 @@ public class TreeFall : MonoBehaviour {
             return;
         }
 
-        transform.RotateAround(transform.TransformPoint(_hitPoint), _fallAxis, _fallSpeed * Time.deltaTime);
+        _fallingTransform.RotateAround(_hitPoint, _fallAxis, _fallSpeed * Time.deltaTime);
     }
 
     public void StartFall(Vector3 fallDirection, Vector3 hitPoint) {
@@ -28,6 +30,6 @@ public class TreeFall : MonoBehaviour {
 
     private void OnDrawGizmosSelected() {
         Gizmos.color = Color.blue;
-        Gizmos.DrawSphere(transform.TransformPoint(_hitPoint), 0.2f);
+        Gizmos.DrawSphere(_hitPoint, 0.2f);
     }
 }
