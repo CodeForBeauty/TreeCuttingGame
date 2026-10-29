@@ -6,7 +6,6 @@ public class TreeFall : MonoBehaviour {
 
     [SerializeField] private Transform _fallingTransform;
 
-    // world
     private Vector3 _hitPoint = Vector3.zero;
     private bool _isFalling = false;
 

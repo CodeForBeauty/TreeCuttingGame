@@ -1,9 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 public class SDFTree : MonoBehaviour {
     [SerializeField] private Mesh _mesh;
@@ -13,21 +10,22 @@ public class SDFTree : MonoBehaviour {
     [SerializeField] private Vector3Int _boxSize = Vector3Int.one;
     private Vector3 _boxHalfSize = Vector3Int.one;
 
+    [Min(0.001f)]
     [SerializeField] private float _texelSize = 0.05f;
 
     [SerializeField] private Transform _fallingTransform;
     [SerializeField] private Renderer _fallingRenderer;
 
-    private Texture3D _tex = null;
     private Material _mat = null;
     private Material _fallingMat = null;
 
+    private Texture3D _tex = null;
     private Texture3D _uvTex = null;
     private Texture3D _tangentTex = null;
 
-    private Vector4[,,] _sdf;
+    private Vector4[,,] _sdf; // xyz - normal, w - signed distance
     private Vector2[,,] _sdfUV;
-    private Vector4[,,] _sdfTangent;
+    private Vector4[,,] _sdfTangent; // xyz - tangent, w - inside blending
 
     private List<Vector3> _vertices = new();
     private List<int> _triangles = new();
@@ -37,25 +35,29 @@ public class SDFTree : MonoBehaviour {
 
     private void Start() {
         _boxHalfSize = (Vector3)_boxSize / 2.0f;
-        if (_mesh == null || _renderQuad == null) {
-            Debug.LogError("Mesh not set for SDF");
+        if (_mesh == null || _renderQuad == null || _fallingTransform == null || _fallingRenderer == null) {
+            Debug.LogError("SDF Tree not setup");
             return;
         }
 
-        _tex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false);
-        _tex.filterMode = FilterMode.Bilinear;
+        _tex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false) {
+            filterMode = FilterMode.Bilinear
+        };
 
-        _uvTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGFloat, false);
-        _uvTex.filterMode = FilterMode.Bilinear;
+        _uvTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGFloat, false) {
+            filterMode = FilterMode.Bilinear
+        };
 
-        _tangentTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false);
-        _tangentTex.filterMode = FilterMode.Bilinear;
+        _tangentTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false) {
+            filterMode = FilterMode.Bilinear
+        };
 
         _mesh.GetVertices(_vertices);
         _mesh.GetTriangles(_triangles, 0);
         _mesh.GetNormals(_normals);
         _mesh.GetTangents(_tangents);
         _mesh.GetUVs(0, _uvs);
+
         _sdf = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
         _sdfUV = new Vector2[_boxSize.x, _boxSize.y, _boxSize.z];
         _sdfTangent = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
@@ -86,11 +88,11 @@ public class SDFTree : MonoBehaviour {
         _mat.SetFloat("_TexelSize", _texelSize);
         _mat.SetVector("_TexSize", new Vector4(_boxSize.x, _boxSize.y, _boxSize.z));
 
-        _vertices = null;
-        _triangles = null;
-        _normals = null;
-        _tangents = null;
-        _uvs = null;
+        _vertices.Clear();
+        _triangles.Clear();
+        _normals.Clear();
+        _tangents.Clear();
+        _uvs.Clear();
 
         _fallingTransform.gameObject.SetActive(false);
     }
@@ -124,18 +126,11 @@ public class SDFTree : MonoBehaviour {
                             _sdf[i, j, k].x = norm.x;
                             _sdf[i, j, k].y = norm.y;
                             _sdf[i, j, k].z = norm.z;
-                            //print(norm);
-                            if (!IsNormal(norm)) {
-                                print(norm);
-                            }
 
                             Vector3 tang = Vector3.Cross(norm, -Vector3.right);
                             _sdfTangent[i, j, k].x = tang.x;
                             _sdfTangent[i, j, k].y = tang.y;
                             _sdfTangent[i, j, k].z = tang.z;
-                            if (!IsNormal(tang)) {
-                                print(tang);
-                            }
                         }
                     }
                     else {
@@ -166,29 +161,7 @@ public class SDFTree : MonoBehaviour {
 
         forward = Quaternion.Inverse(transform.rotation) * forward;
 
-        float t = 0f;
-
-
-        for (int i = 0; i < 200; i++) {
-            Vector3 curr = (texelPointTMP + forward * t);
-            if (curr.x < 0 || curr.x >= _boxSize.x
-                || curr.y < 0 || curr.y >= _boxSize.y
-                || curr.z < 0 || curr.z >= _boxSize.z) {
-                t += 2;
-                continue;
-            }
-
-            Vector3Int currInt = Vector3Int.FloorToInt(curr);
-
-            var sdf = _sdf[currInt.x, currInt.y, currInt.z];
-
-            if (sdf.w < 0.015f) {
-                texelPoint = currInt;
-                break;
-            }
-
-            t += sdf.w;
-        }
+        Raymarch(texelPointTMP, forward, ref texelPoint);
 
         size /= _texelSize;
 
@@ -197,6 +170,7 @@ public class SDFTree : MonoBehaviour {
                 for (int k = Mathf.Max(0, (int)(texelPoint.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(texelPoint.z + size * 2)); k++) {
                     Vector3 curr = new(i, j, k);
                     float dist = Vector3.Distance(texelPoint, curr);
+
                     if (_sdf[i, j, k].w <= -0.015f) {
                         if (dist <= size) {
                             _sdf[i, j, k].w = (size - dist) / _boxHalfSize.x;
@@ -206,9 +180,6 @@ public class SDFTree : MonoBehaviour {
                             }
                             else {
                                  norm = Vector3.Normalize(texelPoint - curr);
-                            }
-                            if (!IsNormal(norm)) {
-                                print(norm);
                             }
                             _sdf[i, j, k].x = norm.x;
                             _sdf[i, j, k].y = norm.y;
@@ -224,9 +195,6 @@ public class SDFTree : MonoBehaviour {
                             _sdfTangent[i, j, k].x = tang.x;
                             _sdfTangent[i, j, k].y = tang.y;
                             _sdfTangent[i, j, k].z = tang.z;
-                            if (!IsNormal(tang)) {
-                                print(tang);
-                            }
                         }
                         else {
                             float tmp = (size - dist) / _boxHalfSize.x;
@@ -236,9 +204,6 @@ public class SDFTree : MonoBehaviour {
                                 _sdf[i, j, k].x = norm.x;
                                 _sdf[i, j, k].y = norm.y;
                                 _sdf[i, j, k].z = norm.z;
-                                if (!IsNormal(norm)) {
-                                    print(norm);
-                                }
 
                                 Vector3 tang;
                                 if (Mathf.Abs(Vector3.Dot(Vector3.Normalize(curr - texelPoint), Vector3.up)) >= 0.95f) {
@@ -250,9 +215,6 @@ public class SDFTree : MonoBehaviour {
                                 _sdfTangent[i, j, k].x = tang.x;
                                 _sdfTangent[i, j, k].y = tang.y;
                                 _sdfTangent[i, j, k].z = tang.z;
-                                if (!IsNormal(tang)) {
-                                    print(tang);
-                                }
                             }
                         }
                     }
@@ -273,6 +235,33 @@ public class SDFTree : MonoBehaviour {
     private bool IsNormal(Vector3 vec) {
         return !float.IsNaN(vec.x) && !float.IsNaN(vec.y) && !float.IsNaN(vec.z)
             && !float.IsInfinity(vec.x) && !float.IsInfinity(vec.y) && !float.IsInfinity(vec.z);
+    }
+
+    private bool Raymarch(Vector3 start, Vector3 dir, ref Vector3 hit) {
+        float t = 0f;
+
+        for (int i = 0; i < 200; i++) {
+            Vector3 curr = (start + dir * t);
+            if (curr.x < 0 || curr.x >= _boxSize.x
+                || curr.y < 0 || curr.y >= _boxSize.y
+                || curr.z < 0 || curr.z >= _boxSize.z) {
+                t += 2;
+                continue;
+            }
+
+            Vector3Int currInt = Vector3Int.FloorToInt(curr);
+
+            var sdf = _sdf[currInt.x, currInt.y, currInt.z];
+
+            if (sdf.w < 0.015f) {
+                hit = curr;
+                return true;
+            }
+
+            t += sdf.w;
+        }
+
+        return false;
     }
 
     private Vector4 GetSDF(Vector3 pos, out Vector2 uv, out Vector4 tangent) {
@@ -340,9 +329,6 @@ public class SDFTree : MonoBehaviour {
             + _normals[_triangles[smallestTri + 1]] * v1
             + _normals[_triangles[smallestTri + 2]] * w1;
         norm = Vector3.Normalize(norm);
-        if (!IsNormal(norm)) {
-            print(norm);
-        }
 
         uv = _uvs[_triangles[smallestTri]] * u1
             + _uvs[_triangles[smallestTri + 1]] * v1
@@ -351,13 +337,10 @@ public class SDFTree : MonoBehaviour {
         tangent = _tangents[_triangles[smallestTri]] * u1
             + _tangents[_triangles[smallestTri + 1]] * v1
             + _tangents[_triangles[smallestTri + 2]] * w1;
-        if (!IsNormal(tangent)) {
-            print(tangent);
-        }
 
         float signedDist = Mathf.Sqrt(smallest) / TexelToLocal(_boxHalfSize.x) * sign;
 
-        tangent.w = Mathf.Clamp01(-(signedDist + 0.15f) / 0.1f);
+        tangent.w = Mathf.Clamp01(-(signedDist + 0.1f) / 0.1f);
 
         if (signedDist < 0) {
             Vector2 newUV = new(norm.x, norm.z);
@@ -416,10 +399,8 @@ public class SDFTree : MonoBehaviour {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
                     if (_sdf[i, j, k].w < 0.01f) {
-
-                    //tmp.a = (0.2f - _sdf[i, j, k].w);
-                    Gizmos.color = tmp;
-                    Gizmos.DrawWireCube(TexelToWorld(new Vector3Int(i, j, k)), Vector3.one * _texelSize * 2);
+                        Gizmos.color = tmp;
+                        Gizmos.DrawWireCube(TexelToWorld(new Vector3Int(i, j, k)), Vector3.one * _texelSize * 2);
                     }
                 }
             }

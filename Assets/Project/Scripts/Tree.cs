@@ -35,8 +35,7 @@ public class Tree : MonoBehaviour, IInteractable {
         }
 
         Instantiate(_impactParticles, hit.point, Quaternion.identity);
-        _sdf.AddMark(hit.point - forward * 0.5f, forward, 0.3f);
-        //_sdf.AddMark(hit.point, -hit.normal, 0.3f);
+        _sdf.AddMark(hit.point, forward, 0.3f);
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {
@@ -62,14 +61,11 @@ public class Tree : MonoBehaviour, IInteractable {
         }
 
         _fall.StartFall(normal, UnMap(mostDamagedPoint));
-        print($"Fall from: {mostDamagedPoint}");
     }
 
     private Vector3Int Map(Vector3 vec) {
         vec = transform.InverseTransformPoint(vec);
-        return new Vector3Int(Mathf.FloorToInt(vec.x / _proximityForScore),
-            Mathf.FloorToInt(vec.y / _proximityForScore),
-            Mathf.FloorToInt(vec.z / _proximityForScore));
+        return Vector3Int.FloorToInt(vec / _proximityForScore);
     }
 
     private Vector3 UnMap(Vector3Int vec) {

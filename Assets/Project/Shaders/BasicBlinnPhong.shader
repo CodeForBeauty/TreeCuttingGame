@@ -54,16 +54,18 @@ Shader "Custom/BasicBlinnPhong"
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
+
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
                 OUT.uv = IN.uv;
                 OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz);
+
                 float3 normal = TransformObjectToWorldNormal(IN.normal);
                 float3 tangent = TransformObjectToWorldNormal(IN.tangent);
                 OUT.tbn = float3x3(
                     tangent,
                     cross(tangent, normal),
-                    normal
-                    );
+                    normal);
+
                 return OUT;
             }
 

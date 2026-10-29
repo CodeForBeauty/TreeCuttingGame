@@ -19,6 +19,59 @@ Shader "Custom/SDFRaymarched"
     {
         Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" }
 
+        HLSLINCLUDE
+
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+        TEXTURE3D(_SDFTexture);
+        SAMPLER(sampler_SDFTexture);
+
+        struct RaymarchHit {
+            bool hasHit;
+            float t;
+            float3 curr;
+            float3 normal;
+            float distance;
+        };
+
+        RaymarchHit raymarch(float3 start, float3 step, float3 texSize, float2 sepPoint) {
+            RaymarchHit OUT;
+            OUT.hasHit = false;
+            OUT.t = 0;
+            OUT.curr = float3(0, 0, 0);
+            OUT.normal = float3(0, 0, 1);
+            OUT.distance = 0;
+
+            int maxSteps = int(length(texSize)) * 8;
+
+            float t = 0;
+
+            [loop] for (int i = 0; i < maxSteps; i++) {
+                float3 curr = (start + step * t);
+                if (curr.x < 0 || curr.x >= texSize.x
+                    || curr.y < (sepPoint.y > 0 ? sepPoint.x : 0) || curr.y >= (sepPoint.y < 0 ? sepPoint.x : texSize.y)
+                    || curr.z < 0 || curr.z >= texSize.z) {
+                    t += 2;
+                    continue;
+                }
+                float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (curr / texSize).zyx);
+                if (abs(sdf.a) < 0.015) {
+                    OUT.hasHit = true;
+                    OUT.t = t;
+                    OUT.curr = curr;
+                    OUT.normal = sdf.xyz;
+                    OUT.distance = sdf.w;
+                    break;
+                }
+                
+                t += sdf.a;
+            }
+
+            return OUT;
+        }
+
+        ENDHLSL
+
         Pass
         {
             ZWrite On
@@ -43,7 +96,6 @@ Shader "Custom/SDFRaymarched"
             {
                 float4 positionHCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
-                float3 normalOS : NORMAL;
             };
 
             struct FragOutput {
@@ -59,9 +111,6 @@ Shader "Custom/SDFRaymarched"
 
             TEXTURE2D(_InsideTexture);
             SAMPLER(sampler_InsideTexture);
-            
-            TEXTURE3D(_SDFTexture);
-            SAMPLER(sampler_SDFTexture);
 
             TEXTURE3D(_SDFTangentTexture);
             SAMPLER(sampler_SDFTangentTexture);
@@ -83,10 +132,8 @@ Shader "Custom/SDFRaymarched"
             {
                 Varyings OUT;
 
-                float3 forward = GetViewForwardDir();
-
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
-                OUT.positionWS = mul(unity_ObjectToWorld, IN.positionOS).xyz;
+                OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz);
 
                 return OUT;
             }
@@ -94,6 +141,8 @@ Shader "Custom/SDFRaymarched"
             FragOutput frag(Varyings IN)
             {
                 FragOutput OUT;
+                OUT.color = half4(0, 0, 0, 1);
+                OUT.depth = 0;
 
                 float3 camWS = GetCameraPositionWS();
                 float3 camOS = mul(_InvObjectTransform, float4(camWS, 1)).xyz;
@@ -101,88 +150,70 @@ Shader "Custom/SDFRaymarched"
 
                 float3 dir = positionOS - camOS;
 
-                int maxSteps = int(length(_TexSize)) * 8;
-
                 dir = normalize(dir);
                 float3 step = dir;
 
                 float3 start = (camOS / _TexelSize + _TexSize.xyz / 2);
 
-                float t = 0;
+                RaymarchHit hit = raymarch(start, step, _TexSize.xyz, _SeparatePoint.xy);
 
-                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, ((start + step * t) / _TexSize.xyz).zyx);
+                if (hit.hasHit) {
+                    // Attribute calculation
+                    float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (hit.t * _TexelSize);
 
-                [loop] for (int i = 0; i < maxSteps; i++) {
-                    float3 curr = (start + step * t);
-                    if (curr.x < 0 || curr.x >= _TexSize.x
-                        || curr.y < (_SeparatePoint.y > 0 ? _SeparatePoint.x : 0) || curr.y >= (_SeparatePoint.y < 0 ? _SeparatePoint.x : _TexSize.y)
-                        //|| curr.y < 0 || curr.y >= _TexSize.y
-                        || curr.z < 0 || curr.z >= _TexSize.z) {
-                        t += 2;
-                        continue;
-                    }
-                    float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (curr / _TexSize.xyz).zyx);
-                    if (abs(sdf.a) < 0.015) {
-                        // Attribute calculation
-                        float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (t * _TexelSize);
+                    float2 uv = SAMPLE_TEXTURE3D(_SDFUVTexture, sampler_SDFUVTexture, (hit.curr / _TexSize.xyz).zyx).xy;
 
-                        float2 uv = SAMPLE_TEXTURE3D(_SDFUVTexture, sampler_SDFUVTexture, (curr / _TexSize.xyz).zyx).xy;
+                    float3x3 M = transpose((float3x3)(_InvObjectTransform));
 
-                        float3x3 M = transpose((float3x3)(_InvObjectTransform));
+                    float4 T = SAMPLE_TEXTURE3D(_SDFTangentTexture, sampler_SDFTangentTexture, (hit.curr / _TexSize.xyz).zyx);
+                    float3 tangent = normalize(T.xyz);
 
-                        float4 T = SAMPLE_TEXTURE3D(_SDFTangentTexture, sampler_SDFTangentTexture, (curr / _TexSize.xyz).zyx);
-                        float3 tangent = normalize(T.xyz);
+                    float3 N = hit.normal;
 
-                        float3 N = sdf.xyz;
+                    float3x3 tbn = float3x3(tangent, normalize(cross(tangent, N)), N);
 
-                        float3x3 tbn = float3x3(tangent, normalize(cross(tangent, N)), N);
+                    float3 normal = mul(UnpackNormal(SAMPLE_TEXTURE2D(_NormalTexture, sampler_NormalTexture, uv)), tbn);
+                    normal = mul(M, normal);
 
-                        float3 normal = mul(UnpackNormal(SAMPLE_TEXTURE2D(_NormalTexture, sampler_NormalTexture, uv)), tbn);
-                        normal = mul(M, normal);
+                    // Shading
+                    float4 albedo = _BaseColor * lerp(SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv),
+                                        SAMPLE_TEXTURE2D(_InsideTexture, sampler_InsideTexture, uv), clamp(T.w, 0, 1));
 
-                        // Shading
-                        float4 albedo = _BaseColor * lerp(SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, uv),
-                                            SAMPLE_TEXTURE2D(_InsideTexture, sampler_InsideTexture, uv), clamp(T.w, 0, 1));
+                    float3 viewDir = normalize(camWS - IN.positionWS);
 
-                        float3 viewDir = normalize(camWS - IN.positionWS);
+	                float ratio = 1.00 / 1.52;
+	                float3 posDir = normalize(-viewDir);
+	                float3 reflDir = refract(posDir, normal, ratio);
 
-	                    float ratio = 1.00 / 1.52;
-	                    float3 posDir = normalize(-viewDir);
-	                    float3 reflDir = refract(posDir, normal, ratio);
+                    float3 skyLight = SampleSH(normal);
+	                float3 lighting = albedo.xyz * 0.5 * skyLight;
 
-                        float3 skyLight = SampleSH(normal);
-	                    float3 lighting = albedo.xyz * 0.5 * skyLight;
+                    Light mainLight = GetMainLight(TransformWorldToShadowCoord(worldPos));
+	                float shadow = mainLight.shadowAttenuation;
 
-                        Light mainLight = GetMainLight(TransformWorldToShadowCoord(worldPos));
-	                    float shadow = mainLight.shadowAttenuation;
+                    float3 lightDir = -mainLight.direction;
+                    float diff = max(dot(normal, -lightDir), 0.0);
 
-                        float3 lightDir = -mainLight.direction;
-                        float diff = max(dot(normal, -lightDir), 0.0);
+		            float3 reflectDir = reflect(lightDir, normal);
+		            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+		            float3 specular1 = _SpecularMult * spec * mainLight.color;
 
-		                float3 reflectDir = reflect(lightDir, normal);
-		                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-		                float3 specular1 = _SpecularMult * spec * mainLight.color;
+		            float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
+		            lighting += res;
 
-		                float3 res = (diff * mainLight.color + specular1) * albedo.xyz * shadow;
-		                lighting += res;
+                    OUT.color = half4(lighting, 1);
 
-                        OUT.color = half4(lighting, 1);
+                    // Depth
+                    float4 posHCS = TransformWorldToHClip(worldPos);
+                    OUT.depth = posHCS.z / posHCS.w;
 
-                        // Depth
-                        float4 posHCS = TransformWorldToHClip(worldPos);
-                        OUT.depth = posHCS.z / posHCS.w;
+                    #if UNITY_REVERSED_Z
 
-                        #if UNITY_REVERSED_Z
-
-                        #else
-                            OUT.depth = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, OUT.depth);
-                        #endif
-                        return OUT;
-                    }
-                    
-                    t += sdf.a;
+                    #else
+                        OUT.depth = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, OUT.depth);
+                    #endif
+                    return OUT;
                 }
-
                 discard;
                 return OUT;
             }
@@ -218,28 +249,23 @@ Shader "Custom/SDFRaymarched"
             {
                 float4 positionHCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
-                float3 normalOS : NORMAL;
             };
 
             struct FragOutput {
                 float depth: SV_Depth;
             };
-            
-            TEXTURE3D(_SDFTexture);
-            SAMPLER(sampler_SDFTexture);
 
             CBUFFER_START(UnityPerMaterial)
                 float4x4 _InvObjectTransform;
                 float _TexelSize;
                 float4 _TexSize;
+                float4 _SeparatePoint;
             CBUFFER_END
 
 
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
-
-                float3 forward = GetViewForwardDir();
 
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
                 OUT.positionWS = mul(unity_ObjectToWorld, IN.positionOS).xyz;
@@ -249,55 +275,41 @@ Shader "Custom/SDFRaymarched"
 
             FragOutput frag(Varyings IN) {
                 FragOutput OUT;
+                OUT.depth = 0;
 
                 Light mainLight = GetMainLight();
 
-                float3 lightDir = mainLight.direction;
+                float3 lightDir = -mainLight.direction;
 
-                float3 camWS = IN.positionWS - lightDir * 4;
+                float3 camWS = IN.positionWS - lightDir * 0.5;
                 float3 camOS = mul(_InvObjectTransform, float4(camWS, 1)).xyz;
                 float3 positionOS = mul(_InvObjectTransform, float4(IN.positionWS, 1)).xyz;
 
                 float3 dir = positionOS - camOS;
-
-                int maxSteps = int(length(_TexSize)) * 8;
 
                 dir = normalize(dir);
                 float3 step = dir;
 
                 float3 start = (camOS / _TexelSize + _TexSize.xyz / 2);
 
-                float t = 0;
+                RaymarchHit hit = raymarch(start, step, _TexSize.xyz, _SeparatePoint.xy);
 
-                float lastSDF = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, ((start + step * t) / _TexSize.xyz).zyx);
+                if (hit.hasHit) {
+                    float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (hit.t * _TexelSize);
 
-                [loop] for (int i = 0; i < maxSteps; i++) {
-                    float3 curr = (start + step * t);
-                    if (curr.x < 0 || curr.x >= _TexSize.x
-                        || curr.y < 0 || curr.y >= _TexSize.y
-                        || curr.z < 0 || curr.z >= _TexSize.z) {
-                        t += 2;
-                        continue;
-                    }
-                    float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (curr / _TexSize.xyz).zyx);
-                    if (abs(sdf.a) < 0.015) {
-                        float3 worldPos = camWS + normalize(IN.positionWS - camWS) * (t * _TexelSize);
+                    float3x3 M = transpose((float3x3)(_InvObjectTransform));
+                    float3 normal = mul(M, hit.normal);
 
-                        float3x3 M = transpose((float3x3)(_InvObjectTransform));
-                        float3 normal = mul(M, sdf.xyz);
+                    float4 posHCS = TransformWorldToHClip(ApplyShadowBias(worldPos, normal, -lightDir));
+                    posHCS.z -= 0.01;
+                    OUT.depth = posHCS.z / posHCS.w;
 
-                        float4 posHCS = TransformWorldToHClip(ApplyShadowBias(worldPos, normal, lightDir));
-                        OUT.depth = posHCS.z / posHCS.w;
+                    #if UNITY_REVERSED_Z
 
-                        #if UNITY_REVERSED_Z
-
-                        #else
-                            OUT.depth = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, OUT.depth);
-                        #endif
-                        return OUT;
-                    }
-                    
-                    t += sdf.a;
+                    #else
+                        OUT.depth = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, OUT.depth);
+                    #endif
+                    return OUT;
                 }
 
                 discard;
