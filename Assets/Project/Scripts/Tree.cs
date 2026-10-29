@@ -9,6 +9,9 @@ public class Tree : MonoBehaviour, IInteractable {
     [Min(0.1f)]
     [SerializeField] private float _proximityForScore = 0.3f;
 
+    [Min(0.01f)]
+    [SerializeField] private float _hitDentSize = 0.1f;
+
     [SerializeField] private ParticleSystem _impactParticles;
 
     [SerializeField] private SerializableDictionary<Vector3Int, int> _hits = new();
@@ -35,7 +38,7 @@ public class Tree : MonoBehaviour, IInteractable {
         }
 
         Instantiate(_impactParticles, hit.point, Quaternion.identity);
-        _sdf.AddMark(hit.point, forward, 0.3f);
+        _sdf.AddMark(hit.point, forward, _hitDentSize);
 
         foreach (var h in _hitLevels.Data) {
             if (h.Value >= _health) {

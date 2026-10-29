@@ -23,9 +23,9 @@ public class SDFTree : MonoBehaviour {
     private Texture3D _uvTex = null;
     private Texture3D _tangentTex = null;
 
-    private Vector4[,,] _sdf; // xyz - normal, w - signed distance
-    private Vector2[,,] _sdfUV;
-    private Vector4[,,] _sdfTangent; // xyz - tangent, w - inside blending
+    private Vector4[] _sdf; // xyz - normal, w - signed distance
+    private Vector2[] _sdfUV;
+    private Vector4[] _sdfTangent; // xyz - tangent, w - inside blending
 
     private List<Vector3> _vertices = new();
     private List<int> _triangles = new();
@@ -58,23 +58,24 @@ public class SDFTree : MonoBehaviour {
         _mesh.GetTangents(_tangents);
         _mesh.GetUVs(0, _uvs);
 
-        _sdf = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
-        _sdfUV = new Vector2[_boxSize.x, _boxSize.y, _boxSize.z];
-        _sdfTangent = new Vector4[_boxSize.x, _boxSize.y, _boxSize.z];
+        _sdf = new Vector4[_boxSize.x * _boxSize.y * _boxSize.z];
+        _sdfUV = new Vector2[_boxSize.x * _boxSize.y * _boxSize.z];
+        _sdfTangent = new Vector4[_boxSize.x * _boxSize.y * _boxSize.z];
 
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    _sdf[i, j, k] = GetSDF(TexelToLocal(new Vector3Int(i, j, k)), out Vector2 uv, out Vector4 tangent);
-                    _sdfUV[i, j, k] = uv;
-                    _sdfTangent[i, j, k] = tangent;
+                    int idx = Map3DtoIdx(i, j, k);
+                    _sdf[idx] = GetSDF(TexelToLocal(new Vector3Int(i, j, k)), out Vector2 uv, out Vector4 tangent);
+                    _sdfUV[idx] = uv;
+                    _sdfTangent[idx] = tangent;
                 }
             }
         }
 
-        _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
-        _uvTex.SetPixelData(_sdfUV.Cast<Vector2>().ToArray(), 0);
-        _tangentTex.SetPixelData(_sdfTangent.Cast<Vector4>().ToArray(), 0);
+        _tex.SetPixelData(_sdf, 0);
+        _uvTex.SetPixelData(_sdfUV, 0);
+        _tangentTex.SetPixelData(_sdfTangent, 0);
 
         _tex.Apply();
         _uvTex.Apply();
@@ -118,31 +119,35 @@ public class SDFTree : MonoBehaviour {
                 for (int k = 0; k < _boxSize.z; k++) {
                     float dist = Mathf.Abs(texelPos.y - j) - 1f;
 
-                    if (_sdf[i, j, k].w <= 0.015f) {
+                    int idx = Map3DtoIdx(i, j, k);
+
+                    if (_sdf[idx].w <= 0.015f) {
                         float tmp = -dist / _boxHalfSize.x;
-                        if (tmp > _sdf[i, j, k].w) {
-                            _sdf[i, j, k].w = tmp;
+                        if (tmp > _sdf[idx].w) {
+                            _sdf[idx].w = tmp;
                             Vector3 norm = Vector3.Normalize(Vector3.up * ((texelPos.y - j) > 0 ? 1f : -1f));
-                            _sdf[i, j, k].x = norm.x;
-                            _sdf[i, j, k].y = norm.y;
-                            _sdf[i, j, k].z = norm.z;
+                            _sdf[idx].x = norm.x;
+                            _sdf[idx].y = norm.y;
+                            _sdf[idx].z = norm.z;
 
                             Vector3 tang = Vector3.Cross(norm, -Vector3.right);
-                            _sdfTangent[i, j, k].x = tang.x;
-                            _sdfTangent[i, j, k].y = tang.y;
-                            _sdfTangent[i, j, k].z = tang.z;
+                            _sdfTangent[idx].x = tang.x;
+                            _sdfTangent[idx].y = tang.y;
+                            _sdfTangent[idx].z = tang.z;
                         }
                     }
                     else {
-                        _sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, dist / _boxHalfSize.x);
+                        _sdf[idx].w = Mathf.Max(_sdf[idx].w, dist / _boxHalfSize.x);
                     }
                 }
             }
         }
 
-        _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
+        _tex.SetPixelData(_sdf, 0);
+        _tangentTex.SetPixelData(_sdfTangent, 0);
 
         _tex.Apply();
+        _tangentTex.Apply();
 
         _mat.SetVector("_SeparatePoint", new Vector4(texelPos.y, -1));
 
@@ -171,9 +176,11 @@ public class SDFTree : MonoBehaviour {
                     Vector3 curr = new(i, j, k);
                     float dist = Vector3.Distance(texelPoint, curr);
 
-                    if (_sdf[i, j, k].w <= -0.015f) {
+                    int idx = Map3DtoIdx(i, j, k);
+
+                    if (_sdf[idx].w <= 0.015f) {
                         if (dist <= size) {
-                            _sdf[i, j, k].w = (size - dist) / _boxHalfSize.x;
+                            _sdf[idx].w = (size - dist) / _boxHalfSize.x;
                             Vector3 norm;
                             if (Mathf.Abs(dist) <= 0.015f) {
                                 norm = -forward;
@@ -181,9 +188,9 @@ public class SDFTree : MonoBehaviour {
                             else {
                                  norm = Vector3.Normalize(texelPoint - curr);
                             }
-                            _sdf[i, j, k].x = norm.x;
-                            _sdf[i, j, k].y = norm.y;
-                            _sdf[i, j, k].z = norm.z;
+                            _sdf[idx].x = norm.x;
+                            _sdf[idx].y = norm.y;
+                            _sdf[idx].z = norm.z;
 
                             Vector3 tang;
                             if (Mathf.Abs(Vector3.Dot(Vector3.Normalize(curr - texelPoint), Vector3.up)) >= 0.95f) {
@@ -192,18 +199,18 @@ public class SDFTree : MonoBehaviour {
                             else {
                                 tang = Vector3.Cross(norm, Vector3.up);
                             }
-                            _sdfTangent[i, j, k].x = tang.x;
-                            _sdfTangent[i, j, k].y = tang.y;
-                            _sdfTangent[i, j, k].z = tang.z;
+                            _sdfTangent[idx].x = tang.x;
+                            _sdfTangent[idx].y = tang.y;
+                            _sdfTangent[idx].z = tang.z;
                         }
                         else {
                             float tmp = (size - dist) / _boxHalfSize.x;
-                            if (tmp > _sdf[i, j, k].w) {
-                                _sdf[i, j, k].w = tmp;
+                            if (tmp > _sdf[idx].w) {
+                                _sdf[idx].w = tmp;
                                 Vector3 norm = Vector3.Normalize(texelPoint - curr);
-                                _sdf[i, j, k].x = norm.x;
-                                _sdf[i, j, k].y = norm.y;
-                                _sdf[i, j, k].z = norm.z;
+                                _sdf[idx].x = norm.x;
+                                _sdf[idx].y = norm.y;
+                                _sdf[idx].z = norm.z;
 
                                 Vector3 tang;
                                 if (Mathf.Abs(Vector3.Dot(Vector3.Normalize(curr - texelPoint), Vector3.up)) >= 0.95f) {
@@ -212,21 +219,21 @@ public class SDFTree : MonoBehaviour {
                                 else {
                                     tang = Vector3.Cross(norm, Vector3.up);
                                 }
-                                _sdfTangent[i, j, k].x = tang.x;
-                                _sdfTangent[i, j, k].y = tang.y;
-                                _sdfTangent[i, j, k].z = tang.z;
+                                _sdfTangent[idx].x = tang.x;
+                                _sdfTangent[idx].y = tang.y;
+                                _sdfTangent[idx].z = tang.z;
                             }
                         }
                     }
                     else {
-                        _sdf[i, j, k].w = Mathf.Max(_sdf[i, j, k].w, (size - dist) / _boxHalfSize.x);
+                        _sdf[idx].w = Mathf.Max(_sdf[idx].w, (size - dist) / _boxHalfSize.x);
                     }
                 }
             }
         }
 
-        _tex.SetPixelData(_sdf.Cast<Vector4>().ToArray(), 0);
-        _tangentTex.SetPixelData(_sdfTangent.Cast<Vector4>().ToArray(), 0);
+        _tex.SetPixelData(_sdf, 0);
+        _tangentTex.SetPixelData(_sdfTangent, 0);
 
         _tex.Apply();
         _tangentTex.Apply();
@@ -251,7 +258,7 @@ public class SDFTree : MonoBehaviour {
 
             Vector3Int currInt = Vector3Int.FloorToInt(curr);
 
-            var sdf = _sdf[currInt.x, currInt.y, currInt.z];
+            var sdf = _sdf[Map3DtoIdx(currInt.x, currInt.y, currInt.z)];
 
             if (sdf.w < 0.015f) {
                 hit = curr;
@@ -379,6 +386,10 @@ public class SDFTree : MonoBehaviour {
         return (int)(val / _texelSize);
     }
 
+    private int Map3DtoIdx(int i, int j, int k) {
+        return (i * _boxSize.y * _boxSize.z) + (j * _boxSize.z) + k;
+    }
+
     private Vector3 Project(Vector3 point, Vector3 a, Vector3 b) {
         Vector3 ab = b - a;
         float t = Vector3.Dot(point - a, ab) / Vector3.Dot(ab, ab);
@@ -398,7 +409,7 @@ public class SDFTree : MonoBehaviour {
         for (int i = 0; i < _boxSize.x; i++) {
             for (int j = 0; j < _boxSize.y; j++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    if (_sdf[i, j, k].w < 0.01f) {
+                    if (_sdf[Map3DtoIdx(i, j, k)].w < 0.01f) {
                         Gizmos.color = tmp;
                         Gizmos.DrawWireCube(TexelToWorld(new Vector3Int(i, j, k)), Vector3.one * _texelSize * 2);
                     }
