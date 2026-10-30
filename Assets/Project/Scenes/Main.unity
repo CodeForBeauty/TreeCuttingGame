@@ -379,6 +379,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Tree
   _health: 5
   _proximityForScore: 0.3
+  _hitDentSize: 0.1
   _impactParticles: {fileID: 4246030293897966947, guid: dc2b7d09385cf9a408b17aa4b2a6e410, type: 3}
   _hits:
     _dictionary: []
@@ -1653,7 +1654,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
   _mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
   _renderQuad: {fileID: 1256646970}
-  _boxSize: {x: 16, y: 16, z: 16}
+  _boxSize: {x: 16, y: 24, z: 16}
   _texelSize: 0.1
   _fallingTransform: {fileID: 1892080636}
   _fallingRenderer: {fileID: 99974360}
@@ -1685,6 +1686,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Tree
   _health: 5
   _proximityForScore: 0.1
+  _hitDentSize: 0.1
   _impactParticles: {fileID: 4246030293897966947, guid: dc2b7d09385cf9a408b17aa4b2a6e410, type: 3}
   _hits:
     _dictionary: []

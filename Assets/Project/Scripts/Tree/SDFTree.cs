@@ -160,7 +160,7 @@ public class SDFTree : MonoBehaviour {
         _fallingRenderer.material = _fallingMat;
     }
 
-    public void AddMark(Vector3 point, Vector3 forward, float size) {
+    public void AddMark(Vector3 point, Vector3 forward, Vector3 size) {
         Vector3 texelPoint = WorldToTexelF(point);
         Vector3 texelPointTMP = WorldToTexelF(point - forward * 0.5f);
 
@@ -169,18 +169,22 @@ public class SDFTree : MonoBehaviour {
         Raymarch(texelPointTMP, forward, ref texelPoint);
 
         size /= _texelSize;
+        Vector3 invSize = new(1f / size.x, 1f / size.y, 1f / size.z);
 
-        for (int i = Mathf.Max(0, (int)(texelPoint.x - size * 2)); i < Mathf.Min(_boxSize.x, (int)(texelPoint.x + size * 2)); i++) {
-            for (int j = Mathf.Max(0, (int)(texelPoint.y - size * 2)); j < Mathf.Min(_boxSize.y, (int)(texelPoint.y + size * 2)); j++) {
-                for (int k = Mathf.Max(0, (int)(texelPoint.z - size * 2)); k < Mathf.Min(_boxSize.z, (int)(texelPoint.z + size * 2)); k++) {
+        for (int i = Mathf.Max(0, (int)(texelPoint.x - size.x * 2)); i < Mathf.Min(_boxSize.x, (int)(texelPoint.x + size.x * 2)); i++) {
+            for (int j = Mathf.Max(0, (int)(texelPoint.y - size.y * 2)); j < Mathf.Min(_boxSize.y, (int)(texelPoint.y + size.y * 2)); j++) {
+                for (int k = Mathf.Max(0, (int)(texelPoint.z - size.z * 2)); k < Mathf.Min(_boxSize.z, (int)(texelPoint.z + size.z * 2)); k++) {
                     Vector3 curr = new(i, j, k);
-                    float dist = Vector3.Distance(texelPoint, curr);
+                    Vector3 diff = texelPoint - curr;
+                    Vector3 normal = Vector3.Normalize(diff);
+                    float sizeScaled = Vector3.Magnitude(Vector3.Scale(normal, size));
+                    float dist = Vector3.Magnitude(diff);
 
                     int idx = Map3DtoIdx(i, j, k);
 
                     if (_sdf[idx].w <= 0.015f) {
-                        if (dist <= size) {
-                            _sdf[idx].w = (size - dist) / _boxHalfSize.x;
+                        if (dist <= sizeScaled) {
+                            _sdf[idx].w = (sizeScaled - dist) / _boxHalfSize.x;
                             Vector3 norm;
                             if (Mathf.Abs(dist) <= 0.015f) {
                                 norm = -forward;
@@ -204,7 +208,7 @@ public class SDFTree : MonoBehaviour {
                             _sdfTangent[idx].z = tang.z;
                         }
                         else {
-                            float tmp = (size - dist) / _boxHalfSize.x;
+                            float tmp = (sizeScaled - dist) / _boxHalfSize.x;
                             if (tmp > _sdf[idx].w) {
                                 _sdf[idx].w = tmp;
                                 Vector3 norm = Vector3.Normalize(texelPoint - curr);
@@ -226,7 +230,7 @@ public class SDFTree : MonoBehaviour {
                         }
                     }
                     else {
-                        _sdf[idx].w = Mathf.Max(_sdf[idx].w, (size - dist) / _boxHalfSize.x);
+                        _sdf[idx].w = Mathf.Max(_sdf[idx].w, (sizeScaled - dist) / _boxHalfSize.x);
                     }
                 }
             }
