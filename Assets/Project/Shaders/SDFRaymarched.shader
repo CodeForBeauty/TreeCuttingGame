@@ -153,6 +153,9 @@ Shader "Custom/SDFRaymarched"
                 dir = normalize(dir);
                 float3 step = dir;
 
+                camOS = positionOS - dir * 2;
+                camWS = IN.positionWS - dir * 2;
+
                 float3 start = (camOS / _TexelSize + _TexSize.xyz / 2);
 
                 RaymarchHit hit = raymarch(start, step, _TexSize.xyz, _SeparatePoint.xy);
