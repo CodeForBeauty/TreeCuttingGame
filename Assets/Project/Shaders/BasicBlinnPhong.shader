@@ -5,7 +5,8 @@ Shader "Custom/BasicBlinnPhong"
         [MainColor] _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         [MainTexture] _DiffuseTexture("Diffuse Texture", 2D) = "white" {}
         _NormalTexture("Normal Texture", 2D) = "bump" {}
-        _SpecularMult("Specular", float) = 0.5
+        _SpecularMult("Specular", Range(0, 1)) = 0.5
+        _AlphaCut("Alpha Cut Threshold", Range(-0.5, 1)) = -0.5
     }
 
     SubShader
@@ -49,6 +50,7 @@ Shader "Custom/BasicBlinnPhong"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
                 float _SpecularMult;
+                float _AlphaCut;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -72,6 +74,10 @@ Shader "Custom/BasicBlinnPhong"
             half4 frag(Varyings IN) : SV_Target
             {
                 float4 albedo = _BaseColor * SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, IN.uv);
+
+                if (albedo.a < _AlphaCut) {
+                    discard;
+                }
 
                 float3 normal = mul(UnpackNormal(SAMPLE_TEXTURE2D(_NormalTexture, sampler_NormalTexture, IN.uv)), IN.tbn);
 
