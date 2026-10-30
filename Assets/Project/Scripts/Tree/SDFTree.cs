@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public class SDFTree : MonoBehaviour {
-    [SerializeField] private Mesh _mesh;
+    [SerializeField] private MeshFilter _trunkMesh;
+    [SerializeField] private MeshFilter _lowerTrunk;
     [SerializeField] private Renderer _renderQuad;
 
     [Min(1)]
@@ -15,6 +15,9 @@ public class SDFTree : MonoBehaviour {
 
     [SerializeField] private Transform _fallingTransform;
     [SerializeField] private Renderer _fallingRenderer;
+
+    private Mesh _upperMesh;
+    private Mesh _lowerMesh;
 
     private Material _mat = null;
     private Material _fallingMat = null;
@@ -35,28 +38,38 @@ public class SDFTree : MonoBehaviour {
 
     private void Start() {
         _boxHalfSize = (Vector3)_boxSize / 2.0f;
-        if (_mesh == null || _renderQuad == null || _fallingTransform == null || _fallingRenderer == null) {
+        if (_trunkMesh == null || _lowerTrunk == null || _renderQuad == null || _fallingTransform == null || _fallingRenderer == null) {
             Debug.LogError("SDF Tree not setup");
             return;
         }
 
-        _tex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false) {
-            filterMode = FilterMode.Bilinear
+        _tex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false, true) {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
         };
 
-        _uvTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGFloat, false) {
-            filterMode = FilterMode.Bilinear
+        _uvTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGFloat, false, true) {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
         };
 
-        _tangentTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false) {
-            filterMode = FilterMode.Bilinear
+        _tangentTex = new Texture3D(_boxSize.x, _boxSize.y, _boxSize.z, TextureFormat.RGBAFloat, false, true) {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
         };
 
-        _mesh.GetVertices(_vertices);
-        _mesh.GetTriangles(_triangles, 0);
-        _mesh.GetNormals(_normals);
-        _mesh.GetTangents(_tangents);
-        _mesh.GetUVs(0, _uvs);
+        _upperMesh = _trunkMesh.mesh;
+        _lowerMesh = Instantiate(_upperMesh);
+
+        _lowerTrunk.mesh = _lowerMesh;
+        _lowerTrunk.transform.SetPositionAndRotation(_trunkMesh.transform.position, _trunkMesh.transform.rotation);
+        _lowerTrunk.transform.localScale = _trunkMesh.transform.localScale;
+
+        _upperMesh.GetVertices(_vertices);
+        _upperMesh.GetTriangles(_triangles, 0);
+        _upperMesh.GetNormals(_normals);
+        _upperMesh.GetTangents(_tangents);
+        _upperMesh.GetUVs(0, _uvs);
 
         _sdf = new Vector4[_boxSize.x * _boxSize.y * _boxSize.z];
         _sdfUV = new Vector2[_boxSize.x * _boxSize.y * _boxSize.z];
@@ -89,13 +102,43 @@ public class SDFTree : MonoBehaviour {
         _mat.SetFloat("_TexelSize", _texelSize);
         _mat.SetVector("_TexSize", new Vector4(_boxSize.x, _boxSize.y, _boxSize.z));
 
+        _fallingRenderer.gameObject.SetActive(false);
+
+        List<int> upperTries = new();
+        List<int> lowerTries = new();
+
+        float upperBound = (_boxSize.y - 16) * transform.localScale.y * _texelSize;
+        float lowerBound = -upperBound;
+
+        for (int i = 0; i < _triangles.Count; i += 3) {
+            Vector3 a = MeshToLocal(_vertices[_triangles[i]]);
+            Vector3 b = MeshToLocal(_vertices[_triangles[i + 1]]);
+            Vector3 c = MeshToLocal(_vertices[_triangles[i + 2]]);
+
+            if (a.y >= upperBound || b.y >= upperBound || c.y >= upperBound) {
+                upperTries.Add(_triangles[i]);
+                upperTries.Add(_triangles[i + 1]);
+                upperTries.Add(_triangles[i + 2]);
+            }
+
+            if (a.y <= lowerBound || b.y <= lowerBound || c.y <= lowerBound) {
+                lowerTries.Add(_triangles[i]);
+                lowerTries.Add(_triangles[i + 1]);
+                lowerTries.Add(_triangles[i + 2]);
+            }
+        }
+
+        _upperMesh.SetTriangles(upperTries, 0);
+        _lowerMesh.SetTriangles(lowerTries, 0);
+
+        _upperMesh.UploadMeshData(true);
+        _lowerMesh.UploadMeshData(true);
+
         _vertices.Clear();
         _triangles.Clear();
         _normals.Clear();
         _tangents.Clear();
         _uvs.Clear();
-
-        _fallingTransform.gameObject.SetActive(false);
     }
 
     private void Update() {
@@ -155,7 +198,7 @@ public class SDFTree : MonoBehaviour {
 
         _fallingMat.SetVector("_SeparatePoint", new Vector4(texelPos.y + 1, 1));
 
-        _fallingTransform.gameObject.SetActive(true);
+        _fallingRenderer.gameObject.SetActive(true);
 
         _fallingRenderer.material = _fallingMat;
     }
@@ -283,9 +326,9 @@ public class SDFTree : MonoBehaviour {
         int smallestTri = 0;
 
         for (int i = 0; i < _triangles.Count; i += 3) {
-            Vector3 a = _vertices[_triangles[i]];
-            Vector3 b = _vertices[_triangles[i + 1]];
-            Vector3 c = _vertices[_triangles[i + 2]];
+            Vector3 a = MeshToLocal(_vertices[_triangles[i]]);
+            Vector3 b = MeshToLocal(_vertices[_triangles[i + 1]]);
+            Vector3 c = MeshToLocal(_vertices[_triangles[i + 2]]);
             Vector3 ab = b - a;
             Vector3 ac = c - a;
 
@@ -326,9 +369,9 @@ public class SDFTree : MonoBehaviour {
             }
         }
 
-        Vector3 a1 = _vertices[_triangles[smallestTri]];
-        Vector3 b1 = _vertices[_triangles[smallestTri + 1]];
-        Vector3 c1 = _vertices[_triangles[smallestTri + 2]];
+        Vector3 a1 = MeshToLocal(_vertices[_triangles[smallestTri]]);
+        Vector3 b1 = MeshToLocal(_vertices[_triangles[smallestTri + 1]]);
+        Vector3 c1 = MeshToLocal(_vertices[_triangles[smallestTri + 2]]);
 
         float invN21 = 1 / Vector3.Dot(smallNormal, smallNormal);
 
@@ -360,6 +403,11 @@ public class SDFTree : MonoBehaviour {
         }
 
         return new Vector4(norm.x, norm.y, norm.z, signedDist);
+    }
+
+    private Vector3 MeshToLocal(Vector3 pos) {
+        var trans = _trunkMesh.transform;
+        return trans.localPosition + Vector3.Scale(trans.localScale, trans.localRotation * pos);
     }
 
     private Vector3Int LocalToTexel(Vector3 pos) {
@@ -402,7 +450,7 @@ public class SDFTree : MonoBehaviour {
     }
 
     private void OnDrawGizmosSelected() {
-        if (_sdf == null) {
+        if (_sdf == null || _sdf.Length == 0) {
             Gizmos.color = Color.green;
             Gizmos.DrawWireCube(transform.position, Vector3.Scale((Vector3)_boxSize, transform.localScale) * _texelSize);
             return;

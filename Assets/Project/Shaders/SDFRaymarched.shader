@@ -54,8 +54,8 @@ Shader "Custom/SDFRaymarched"
                     t += 2;
                     continue;
                 }
-                float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, (curr / texSize).zyx);
-                if (abs(sdf.a) < 0.015) {
+                float4 sdf = SAMPLE_TEXTURE3D(_SDFTexture, sampler_SDFTexture, ((curr + 0.5) / texSize).zyx);
+                if (abs(sdf.a) < 0.025) {
                     OUT.hasHit = true;
                     OUT.t = t;
                     OUT.curr = curr;
