@@ -6,10 +6,16 @@ public class TreeFall : MonoBehaviour {
 
     [SerializeField] private Transform _fallingTransform;
 
+    [SerializeField] private Collider _collider;
+
     private Vector3 _hitPoint = Vector3.zero;
     private bool _isFalling = false;
 
     private Vector3 _fallAxis = Vector3.zero;
+
+    private void Start() {
+        _collider.enabled = false;
+    }
 
     private void Update() {
         if (!_isFalling) {
@@ -25,6 +31,12 @@ public class TreeFall : MonoBehaviour {
         _hitPoint = hitPoint;
 
         _fallAxis = Vector3.Cross(Vector3.up, fallDirection);
+
+        _collider.enabled = true;
+    }
+
+    public void GroundHit() {
+        _isFalling = false;
     }
 
     private void OnDrawGizmosSelected() {

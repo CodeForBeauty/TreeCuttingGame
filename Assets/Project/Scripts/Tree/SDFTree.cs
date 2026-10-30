@@ -107,7 +107,7 @@ public class SDFTree : MonoBehaviour {
         List<int> upperTries = new();
         List<int> lowerTries = new();
 
-        float upperBound = (_boxSize.y - 16) * transform.localScale.y * _texelSize;
+        float upperBound = (_boxSize.y - LocalToTexel(2f)) * transform.localScale.y * _texelSize;
         float lowerBound = -upperBound;
 
         for (int i = 0; i < _triangles.Count; i += 3) {
