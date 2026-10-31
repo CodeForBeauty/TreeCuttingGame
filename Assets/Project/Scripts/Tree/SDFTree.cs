@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class SDFTree : MonoBehaviour {
+    [SerializeField] private Material _trunkMaterial;
     [SerializeField] private MeshFilter _trunkMesh;
     [SerializeField] private MeshFilter _lowerTrunk;
     [SerializeField] private Renderer _renderQuad;
@@ -38,7 +39,7 @@ public class SDFTree : MonoBehaviour {
 
     private void Start() {
         _boxHalfSize = (Vector3)_boxSize / 2.0f;
-        if (_trunkMesh == null || _lowerTrunk == null || _renderQuad == null || _fallingTransform == null || _fallingRenderer == null) {
+        if (_trunkMaterial == null || _trunkMesh == null || _lowerTrunk == null || _renderQuad == null || _fallingTransform == null || _fallingRenderer == null) {
             Debug.LogError("SDF Tree not setup");
             return;
         }
@@ -139,6 +140,10 @@ public class SDFTree : MonoBehaviour {
         _normals.Clear();
         _tangents.Clear();
         _uvs.Clear();
+
+        _mat.SetTexture("_DiffuseTexture", _trunkMaterial.GetTexture("_DiffuseTexture"));
+        _mat.SetTexture("_NormalTexture", _trunkMaterial.GetTexture("_NormalTexture"));
+        _mat.SetFloat("_SpecularMult", _trunkMaterial.GetFloat("_SpecularMult"));
     }
 
     private void Update() {
@@ -155,12 +160,12 @@ public class SDFTree : MonoBehaviour {
     public void Separate(Vector3 position) {
         Vector3 texelPos = WorldToTexelF(position);
 
-        float affectRadius = LocalToTexel(0.3f);
+        float affectRadius = LocalToTexel(0.5f);
 
         for (int j = Mathf.Max((int)(texelPos.y - affectRadius), 0); j < Mathf.Min((int)(texelPos.y + affectRadius), _boxSize.y); j++) {
             for (int i = 0; i < _boxSize.x; i++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    float dist = Mathf.Abs(texelPos.y - j) - 1f;
+                    float dist = Mathf.Abs(texelPos.y - j) - 1.5f;
 
                     int idx = Map3DtoIdx(i, j, k);
 
@@ -396,7 +401,7 @@ public class SDFTree : MonoBehaviour {
 
         tangent.w = Mathf.Clamp01(-(signedDist + 0.1f) / 0.1f);
 
-        if (signedDist < 0) {
+        if (signedDist < -0.15f) {
             Vector2 newUV = new(norm.x, norm.z);
             newUV = Vector2.Normalize(newUV);
             uv = newUV * -signedDist / 2f + Vector2.one * 0.5f;
