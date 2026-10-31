@@ -1,6 +1,8 @@
 using UnityEngine;
 
 public class TreeFall : MonoBehaviour {
+    public event System.Action OnFell = delegate { };
+
     [Range(1f, 360f)]
     [SerializeField] private float _fallSpeed = 25f;
 
@@ -37,6 +39,7 @@ public class TreeFall : MonoBehaviour {
 
     public void GroundHit() {
         _isFalling = false;
+        OnFell();
     }
 
     private void OnDrawGizmosSelected() {
