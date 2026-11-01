@@ -384,7 +384,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!23 &99974360
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -466,7 +466,7 @@ Transform:
   m_GameObject: {fileID: 1725952674}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.25599957, y: -1.57, z: -0.09000015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2676,7 +2676,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: efc67193a0108d6488229f35d711bba2, type: 2}
+  - {fileID: 2100000, guid: f4f62cca1a2a1bc418931e98125fa1e1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -3115,14 +3115,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc6df082712232148b9c04fbd30e8a83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SDFTree
+  _assetName: Tree1
+  _treeMesh: {fileID: 2212009239438826721, guid: f5a714170a3dece429a2cb9abc70c15c, type: 3}
+  _sdfMaterialBase: {fileID: 2100000, guid: efc67193a0108d6488229f35d711bba2, type: 2}
   _trunkMaterial: {fileID: 2100000, guid: 1858721e0dc72a847b69091677d85e15, type: 2}
   _trunkMesh: {fileID: 1969009141}
   _lowerTrunk: {fileID: 1725952676}
   _renderQuad: {fileID: 1256646970}
-  _boxSize: {x: 24, y: 16, z: 24}
-  _texelSize: 0.2
+  _boxSize: {x: 42, y: 24, z: 42}
+  _texelSize: 0.1
   _fallingTransform: {fileID: 1892080636}
   _fallingRenderer: {fileID: 99974360}
+  _mat: {fileID: 2100000, guid: f4f62cca1a2a1bc418931e98125fa1e1, type: 2}
+  _sdfTex: {fileID: 11700000, guid: 06637f5e463c37a47a8669caf9d4334c, type: 2}
+  _sdfTangentTex: {fileID: 11700000, guid: 6be7754670ee11345a9f12bcb5518f91, type: 2}
+  _sepDist: 1.4
 --- !u!114 &1551885917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3956,7 +3963,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1725952674}
-  m_Mesh: {fileID: 0}
+  m_Mesh: {fileID: 4300000, guid: 6cfc3b4ed85543747be8c9aa13bc0295, type: 2}
 --- !u!1001 &1814704158
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4962,7 +4969,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1969009134}
-  m_Mesh: {fileID: 2212009239438826721, guid: f5a714170a3dece429a2cb9abc70c15c, type: 3}
+  m_Mesh: {fileID: 4300000, guid: 095420b5e5d77504b917cff78a28206a, type: 2}
 --- !u!114 &2000458141 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7373437809240798412, guid: cd19df48118ca27489fb4533da3e98ca, type: 3}

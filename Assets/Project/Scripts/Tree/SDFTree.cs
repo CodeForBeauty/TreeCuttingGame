@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class SDFTree : MonoBehaviour {
+    [SerializeField] private string _assetName;
+    [SerializeField] private Mesh _treeMesh;
+    [SerializeField] private Material _sdfMaterialBase;
     [SerializeField] private Material _trunkMaterial;
     [SerializeField] private MeshFilter _trunkMesh;
     [SerializeField] private MeshFilter _lowerTrunk;
@@ -20,12 +23,17 @@ public class SDFTree : MonoBehaviour {
     private Mesh _upperMesh;
     private Mesh _lowerMesh;
 
-    private Material _mat = null;
+    [SerializeField] private Material _mat;
     private Material _fallingMat = null;
+
+    [SerializeField] private Texture3D _sdfTex = null;
+    [SerializeField] private Texture3D _sdfTangentTex = null;
 
     private Texture3D _tex = null;
     private Texture3D _uvTex = null;
     private Texture3D _tangentTex = null;
+
+    [SerializeField] private float _sepDist = 0.4f;
 
     private Vector4[] _sdf; // xyz - normal, w - signed distance
     private Vector2[] _sdfUV;
@@ -38,6 +46,31 @@ public class SDFTree : MonoBehaviour {
     private List<Vector2> _uvs = new();
 
     private void Start() {
+        _tex = Instantiate(_sdfTex);
+        _tangentTex = Instantiate(_sdfTangentTex);
+        _mat.SetTexture("_SDFTexture", _tex);
+        _mat.SetTexture("_SDFTangentTexture", _tangentTex);
+        _mat.SetVector("_SeparatePoint", new Vector4(0, 0));
+
+        _boxHalfSize = (Vector3)_boxSize / 2.0f;
+        _sdf = _tex.GetPixelData<Vector4>(0).ToArray();
+        _sdfTangent = _tangentTex.GetPixelData<Vector4>(0).ToArray();
+    }
+
+    private void Update() {
+        _mat.SetMatrix("_InvObjectTransform", transform.worldToLocalMatrix);
+        if (_fallingMat != null) {
+            _fallingMat.SetMatrix("_InvObjectTransform", _fallingTransform.worldToLocalMatrix);
+        }
+    }
+
+    private void OnDestroy() {
+        Destroy(_fallingMat);
+    }
+
+#if UNITY_EDITOR
+    [ContextMenu("Generate SDF")]
+    public void Generate() {
         _boxHalfSize = (Vector3)_boxSize / 2.0f;
         if (_trunkMaterial == null || _trunkMesh == null || _lowerTrunk == null || _renderQuad == null || _fallingTransform == null || _fallingRenderer == null) {
             Debug.LogError("SDF Tree not setup");
@@ -59,7 +92,7 @@ public class SDFTree : MonoBehaviour {
             wrapMode = TextureWrapMode.Clamp
         };
 
-        _upperMesh = _trunkMesh.mesh;
+        _upperMesh = Instantiate(_treeMesh);
         _lowerMesh = Instantiate(_upperMesh);
 
         _lowerTrunk.mesh = _lowerMesh;
@@ -95,7 +128,18 @@ public class SDFTree : MonoBehaviour {
         _uvTex.Apply();
         _tangentTex.Apply();
 
-        _mat = _renderQuad.material;
+        _sdfTex = _tex;
+        _sdfTangentTex = _tangentTex;
+
+        if (!UnityEditor.AssetDatabase.IsValidFolder($"Assets/Trees/{_assetName}")) {
+            UnityEditor.AssetDatabase.CreateFolder("Assets/Trees", _assetName);
+        }
+
+        UnityEditor.AssetDatabase.CreateAsset(_tex, $"Assets/Trees/{_assetName}/sdf.asset");
+        UnityEditor.AssetDatabase.CreateAsset(_uvTex, $"Assets/Trees/{_assetName}/uv.asset");
+        UnityEditor.AssetDatabase.CreateAsset(_tangentTex, $"Assets/Trees/{_assetName}/tangent.asset");
+
+        _mat = Instantiate(_sdfMaterialBase);
 
         _mat.SetTexture("_SDFTexture", _tex);
         _mat.SetTexture("_SDFTangentTexture", _tangentTex);
@@ -108,7 +152,7 @@ public class SDFTree : MonoBehaviour {
         List<int> upperTries = new();
         List<int> lowerTries = new();
 
-        float upperBound = (_boxSize.y - LocalToTexel(2f)) * transform.localScale.y * _texelSize;
+        float upperBound = (_boxSize.y - LocalToTexel(_sepDist)) * transform.localScale.y * _texelSize;
         float lowerBound = -upperBound;
 
         for (int i = 0; i < _triangles.Count; i += 3) {
@@ -135,6 +179,11 @@ public class SDFTree : MonoBehaviour {
         _upperMesh.UploadMeshData(true);
         _lowerMesh.UploadMeshData(true);
 
+        _trunkMesh.mesh = _upperMesh;
+
+        UnityEditor.AssetDatabase.CreateAsset(_upperMesh, $"Assets/Trees/{_assetName}/upperMesh.mesh");
+        UnityEditor.AssetDatabase.CreateAsset(_lowerMesh, $"Assets/Trees/{_assetName}/lowerMesh.mesh");
+
         _vertices.Clear();
         _triangles.Clear();
         _normals.Clear();
@@ -144,18 +193,14 @@ public class SDFTree : MonoBehaviour {
         _mat.SetTexture("_DiffuseTexture", _trunkMaterial.GetTexture("_DiffuseTexture"));
         _mat.SetTexture("_NormalTexture", _trunkMaterial.GetTexture("_NormalTexture"));
         _mat.SetFloat("_SpecularMult", _trunkMaterial.GetFloat("_SpecularMult"));
-    }
 
-    private void Update() {
+        _renderQuad.material = _mat;
+
+        UnityEditor.AssetDatabase.CreateAsset(_mat, $"Assets/Trees/{_assetName}/material.mat");
+
         _mat.SetMatrix("_InvObjectTransform", transform.worldToLocalMatrix);
-        if (_fallingMat != null) {
-            _fallingMat.SetMatrix("_InvObjectTransform", _fallingTransform.worldToLocalMatrix);
-        }
     }
-
-    private void OnDestroy() {
-        Destroy(_fallingMat);
-    }
+#endif
 
     public void Separate(Vector3 position) {
         Vector3 texelPos = WorldToTexelF(position);
@@ -165,7 +210,7 @@ public class SDFTree : MonoBehaviour {
         for (int j = Mathf.Max((int)(texelPos.y - affectRadius), 0); j < Mathf.Min((int)(texelPos.y + affectRadius), _boxSize.y); j++) {
             for (int i = 0; i < _boxSize.x; i++) {
                 for (int k = 0; k < _boxSize.z; k++) {
-                    float dist = Mathf.Abs(texelPos.y - j) - 1.5f;
+                    float dist = Mathf.Abs(texelPos.y - j) - 2f;
 
                     int idx = Map3DtoIdx(i, j, k);
 
@@ -197,11 +242,11 @@ public class SDFTree : MonoBehaviour {
         _tex.Apply();
         _tangentTex.Apply();
 
-        _mat.SetVector("_SeparatePoint", new Vector4(texelPos.y, -1));
+        _mat.SetVector("_SeparatePoint", new Vector4(texelPos.y - 1, -1));
 
         _fallingMat = Instantiate(_mat);
 
-        _fallingMat.SetVector("_SeparatePoint", new Vector4(texelPos.y + 1, 1));
+        _fallingMat.SetVector("_SeparatePoint", new Vector4(texelPos.y, 1));
 
         _fallingRenderer.gameObject.SetActive(true);
 
@@ -215,6 +260,8 @@ public class SDFTree : MonoBehaviour {
         forward = Quaternion.Inverse(transform.rotation) * forward;
 
         Raymarch(texelPointTMP, forward, ref texelPoint);
+
+        Debug.DrawRay(TexelToWorld(texelPoint), forward, Color.red, 5);
 
         size /= _texelSize;
         Vector3 invSize = new(1f / size.x, 1f / size.y, 1f / size.z);
