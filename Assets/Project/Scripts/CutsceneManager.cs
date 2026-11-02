@@ -1,6 +1,7 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class CutsceneManager : MonoBehaviour {
     [SerializeField] private TextMeshProUGUI _text;
@@ -9,11 +10,23 @@ public class CutsceneManager : MonoBehaviour {
     [Tooltip("Per character")]
     [SerializeField] private float _typeTime;
 
+    private CutscenePlayer _current = null;
+
     public static CutsceneManager Instance { get; private set; }
 
     private void Awake() {
         Instance = this;
         _textBox.SetActive(false);
+    }
+
+    public void Interact(InputAction.CallbackContext context) {
+        if (context.started && _current != null) {
+            _current.ShowNext();
+        }
+    }
+
+    public void SetCurrent(CutscenePlayer cs) {
+        _current = cs;
     }
 
     public void ShowNext(string text) {

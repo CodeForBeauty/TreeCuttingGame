@@ -1895,6 +1895,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelEnd
   _fall: {fileID: 1551885917}
+  _cutscene: {fileID: 0}
 --- !u!114 &994595346
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1907,7 +1908,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ebc2e92dba09494cad6cceecf9789ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelLoader
-  _levelName: MainMenu
+  _levelName: Level2
 --- !u!4 &994595347
 Transform:
   m_ObjectHideFlags: 0
@@ -2686,7 +2687,7 @@ GameObject:
   - component: {fileID: 1685001857}
   - component: {fileID: 1685001856}
   m_Layer: 0
-  m_Name: CutSceneTest
+  m_Name: LevelStartCutscene
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2706,7 +2707,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CutscenePlayer
   _playOnStart: 1
   _texts:
-  - asdfasdfadsfasfd
+  - Starting my own tree cutting business was the right decision after all.
 --- !u!4 &1685001857
 Transform:
   m_ObjectHideFlags: 0

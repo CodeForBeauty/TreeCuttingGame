@@ -17,6 +17,7 @@ public class CutscenePlayer : MonoBehaviour {
 
     public void Play() {
         _currentText = -1;
+        CutsceneManager.Instance.SetCurrent(this);
         ShowNext();
     }
 
