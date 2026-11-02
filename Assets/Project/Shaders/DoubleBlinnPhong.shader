@@ -130,22 +130,40 @@ Shader "Custom/DoubleBlinnPhong"
             struct Attributes
             {
                 float4 positionOS : POSITION;
+                float2 uv : TEXCOORD0;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
+                float2 uv : TEXCOORD0;
             };
+
+            TEXTURE2D(_DiffuseTexture);
+            SAMPLER(sampler_DiffuseTexture);
+
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseColor;
+                float _SpecularMult;
+                float _AlphaCut;
+            CBUFFER_END
 
 
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                OUT.uv = IN.uv;
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target {
+                float4 albedo = _BaseColor * SAMPLE_TEXTURE2D(_DiffuseTexture, sampler_DiffuseTexture, IN.uv);
+
+                if (albedo.a < _AlphaCut) {
+                    discard;
+                }
+
                 return 0;
             }
 

@@ -246,7 +246,7 @@ public class SDFTree : MonoBehaviour {
 
         _fallingMat = Instantiate(_mat);
 
-        _fallingMat.SetVector("_SeparatePoint", new Vector4(texelPos.y, 1));
+        _fallingMat.SetVector("_SeparatePoint", new Vector4(texelPos.y + 1, 1));
 
         _fallingRenderer.gameObject.SetActive(true);
 
