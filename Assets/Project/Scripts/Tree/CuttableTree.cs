@@ -13,6 +13,7 @@ public class CuttableTree : MonoBehaviour, IInteractable {
     [SerializeField] private Vector3 _hitDentSize = new Vector3(0.2f, 0.1f, 0.2f);
 
     [SerializeField] private ParticleSystem _impactParticles;
+    [SerializeField] private AudioClip _impactAudio;
 
     [SerializeField] private SerializableDictionary<Vector3Int, int> _hits = new();
     [SerializeField] private SerializableDictionary<int, int> _hitLevels = new();
@@ -40,6 +41,7 @@ public class CuttableTree : MonoBehaviour, IInteractable {
             _damagedNormals.Add(point, forward);
         }
 
+        AudioSource.PlayClipAtPoint(_impactAudio, hit.point);
         Instantiate(_impactParticles, hit.point, Quaternion.identity);
         _sdf.AddMark(hit.point, forward, _hitDentSize);
 

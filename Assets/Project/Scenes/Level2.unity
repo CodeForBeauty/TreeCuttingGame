@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 00afecf1eb75a9b41b65b1577159379b, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -4115,6 +4115,22 @@ PrefabInstance:
     - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
       propertyPath: _assetName
       value: Tree2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _boxSize.x
+      value: 84
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _boxSize.y
+      value: 48
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _boxSize.z
+      value: 84
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _texelSize
+      value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
       propertyPath: _sdfTangentTex

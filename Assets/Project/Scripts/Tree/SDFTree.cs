@@ -346,7 +346,7 @@ public class SDFTree : MonoBehaviour {
     private bool Raymarch(Vector3 start, Vector3 dir, ref Vector3 hit) {
         float t = 0f;
 
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 500; i++) {
             Vector3 curr = (start + dir * t);
             if (curr.x < 0 || curr.x >= _boxSize.x
                 || curr.y < 0 || curr.y >= _boxSize.y

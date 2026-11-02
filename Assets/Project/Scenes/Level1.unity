@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 00afecf1eb75a9b41b65b1577159379b, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -3728,6 +3728,46 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _mat
+      value: 
+      objectReference: {fileID: 2100000, guid: f4f62cca1a2a1bc418931e98125fa1e1, type: 2}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _sdfTex
+      value: 
+      objectReference: {fileID: 11700000, guid: 06637f5e463c37a47a8669caf9d4334c, type: 2}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _boxSize.x
+      value: 84
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _boxSize.y
+      value: 48
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _boxSize.z
+      value: 84
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _texelSize
+      value: 0.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 1481390147437035215, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: _sdfTangentTex
+      value: 
+      objectReference: {fileID: 11700000, guid: 6be7754670ee11345a9f12bcb5518f91, type: 2}
+    - target: {fileID: 4175496081803648759, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: 6cfc3b4ed85543747be8c9aa13bc0295, type: 2}
+    - target: {fileID: 5290291961244459078, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: f4f62cca1a2a1bc418931e98125fa1e1, type: 2}
+    - target: {fileID: 5531923351192186223, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: 095420b5e5d77504b917cff78a28206a, type: 2}
     - target: {fileID: 7848697567853595181, guid: 3b623aed9bf9fcc41b75ffc9d7abd168, type: 3}
       propertyPath: m_Name
       value: Tree

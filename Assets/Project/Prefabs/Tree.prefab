@@ -614,6 +614,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TreeFallCheck
   _fall: {fileID: 4284552887283370561}
   _floorTag: Floor
+  _obstacleTag: Obstacle
 --- !u!54 &7169638937930995685
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -714,10 +715,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ab44415a5870ca4d8ecafc27406d9f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tree
-  _health: 5
-  _proximityForScore: 0.3
-  _hitDentSize: {x: 0.4, y: 0.2, z: 0.4}
+  _health: 30
+  _proximityForScore: 0.4
+  _hitDentSize: {x: 0.3, y: 0.2, z: 0.3}
   _impactParticles: {fileID: 4246030293897966947, guid: dc2b7d09385cf9a408b17aa4b2a6e410, type: 3}
+  _impactAudio: {fileID: 8300000, guid: e895daa0a0c306048b412be50d4c4ac4, type: 3}
   _hits:
     _dictionary: []
     _hasDuplicates: 0
